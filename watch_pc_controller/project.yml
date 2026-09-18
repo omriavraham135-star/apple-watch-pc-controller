@@ -1,0 +1,45 @@
+name: PCVolumeWatch
+options:
+  bundleIdPrefix: com.personal
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    WATCHOS_DEPLOYMENT_TARGET: "10.0"
+
+targets:
+  # iOS Host Companion App (required for installing onto Apple Watch via Sideloadly)
+  PCVolumeApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: watch_pc_controller/apple_watch_app/PCVolumeWatchApp.swift
+      - path: watch_pc_controller/apple_watch_app/ContentView.swift
+      - path: watch_pc_controller/apple_watch_app/VoiceOrbVisualizer.swift
+      - path: watch_pc_controller/apple_watch_app/NetworkClient.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "PC Volume"
+    dependencies:
+      - target: PCVolumeWatchApp
+
+  # Apple Watch Standalone App Target
+  PCVolumeWatchApp:
+    type: application.watchapp2
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: watch_pc_controller/apple_watch_app
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume.watchkitapp
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "PC Volume"
+        WKCompanionAppBundleIdentifier: com.personal.pcvolume
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "שליטה קולית בווליום של המחשב"
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "זיהוי פקודות דיבור בעברית"

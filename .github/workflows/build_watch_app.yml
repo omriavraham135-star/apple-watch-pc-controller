@@ -1,0 +1,52 @@
+name: Build Apple Watch IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_15.4.app || sudo xcode-select -switch /Applications/Xcode.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          cd watch_pc_controller
+          xcodegen generate
+
+      - name: Build Application Archive
+        run: |
+          cd watch_pc_controller
+          xcodebuild -project PCVolumeWatch.xcodeproj \
+            -scheme PCVolumeApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/PCVolume.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Package Payload to IPA
+        run: |
+          cd watch_pc_controller
+          mkdir -p Payload
+          cp -r build/PCVolume.xcarchive/Products/Applications/PCVolumeApp.app Payload/
+          zip -r PCVolume.ipa Payload
+          mkdir -p output
+          mv PCVolume.ipa output/
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCVolume-Watch-IPA
+          path: watch_pc_controller/output/PCVolume.ipa
+          retention-days: 14
