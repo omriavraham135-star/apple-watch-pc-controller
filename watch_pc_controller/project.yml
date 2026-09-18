@@ -10,16 +10,12 @@ settings:
     WATCHOS_DEPLOYMENT_TARGET: "10.0"
 
 targets:
-  # iOS Host Companion App (required for installing onto Apple Watch via Sideloadly)
   PCVolumeApp:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: apple_watch_app/PCVolumeWatchApp.swift
-      - path: apple_watch_app/ContentView.swift
-      - path: apple_watch_app/VoiceOrbVisualizer.swift
-      - path: apple_watch_app/NetworkClient.swift
+      - path: ios_app
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume
@@ -27,8 +23,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "PC Volume"
     dependencies:
       - target: PCVolumeWatchApp
+        embed: true
 
-  # Apple Watch Standalone App Target
   PCVolumeWatchApp:
     type: application.watchapp2
     platform: watchOS
