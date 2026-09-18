@@ -16,10 +16,10 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: watch_pc_controller/apple_watch_app/PCVolumeWatchApp.swift
-      - path: watch_pc_controller/apple_watch_app/ContentView.swift
-      - path: watch_pc_controller/apple_watch_app/VoiceOrbVisualizer.swift
-      - path: watch_pc_controller/apple_watch_app/NetworkClient.swift
+      - path: apple_watch_app/PCVolumeWatchApp.swift
+      - path: apple_watch_app/ContentView.swift
+      - path: apple_watch_app/VoiceOrbVisualizer.swift
+      - path: apple_watch_app/NetworkClient.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume
@@ -34,7 +34,7 @@ targets:
     platform: watchOS
     deploymentTarget: "10.0"
     sources:
-      - path: watch_pc_controller/apple_watch_app
+      - path: apple_watch_app
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume.watchkitapp
