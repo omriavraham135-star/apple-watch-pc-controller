@@ -28,6 +28,13 @@ jobs:
         working-directory: watch_pc_controller
         run: xcodegen generate
 
+      - name: Describe the generated targets
+        working-directory: watch_pc_controller
+        run: |
+          # Product types and embed phases, so a packaging failure can be read
+          # off the project rather than inferred from the build log.
+          grep -E "productType|name = \"Embed|dstSubfolderSpec|dstPath"             PCVolumeWatch.xcodeproj/project.pbxproj | sed 's/^[[:space:]]*//' | sort -u
+
       - name: Resolve packages
         working-directory: watch_pc_controller
         run: |

@@ -47,7 +47,11 @@ targets:
         embed: true
 
   PCVolumeWatchApp:
-    type: application.watchapp2
+    # A modern single-target watchOS app is a plain application. The legacy
+    # `application.watchapp2` type makes Xcode copy in a prebuilt WatchKit stub
+    # binary, which collides with the one this target compiles:
+    # "Multiple commands produce .../PCVolumeWatchApp".
+    type: application
     platform: watchOS
     deploymentTarget: "10.0"
     sources:
