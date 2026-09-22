@@ -12,6 +12,20 @@ section "Network (the Mac must be on the same Wi-Fi as the watch)"
 print "IPv4: $(ipconfig getifaddr en0 2>/dev/null || echo none)"
 ifconfig en0 2>/dev/null | awk '/inet6 fe80/ {print "IPv6 link-local: yes"; exit}'
 
+section "iCloud on this Mac (nearby-device discovery rides on the account)"
+if defaults read MobileMeAccounts Accounts 2>/dev/null | grep -q AccountID; then
+  print "signed in"
+else
+  print "NOT signed in"
+fi
+
+section "Devices the older device stack sees (lists paired watches via the iPhone)"
+xcrun xctrace list devices 2>&1 | sed -n '/== Devices ==/,/== Simulators ==/p' | grep -v Simulators
+
+section "Bluetooth daemon problems (last 15 min)"
+/usr/bin/log show --last 15m --style compact --predicate 'process == "bluetoothd"' 2>/dev/null \
+  | grep -iE 'error|fail|unsupported|not supported' | cut -c1-200 | tail -8
+
 section "Devices CoreDevice knows"
 xcrun devicectl list devices 2>&1 | tail -n +1
 
