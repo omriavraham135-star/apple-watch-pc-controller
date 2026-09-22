@@ -21,6 +21,25 @@ HEBREW_WORDS_TO_NUMBERS = {
     "חצי": 50,
 }
 
+# Longest first, so "עשרים וחמש" is matched before "עשרים".
+_NUMBER_WORDS = "|".join(sorted(HEBREW_WORDS_TO_NUMBERS, key=len, reverse=True))
+_VALUE = r"(\d+|" + _NUMBER_WORDS + r")"
+
+# Hebrew attaches its prepositions to the following word, and dictation keeps
+# them attached: "לשמונים", "בחמישים". Requiring a hyphen or a space after the
+# prefix missed every dictated command, so the separator is optional.
+_ABSOLUTE = re.compile(r"(?:ל[-\s]?|על\s+|בדיוק\s+)" + _VALUE)
+_RELATIVE = re.compile(r"(?:ב[-\s]?)" + _VALUE)
+
+#: Words that mean "set it to", as whole words.
+_SET_VERBS = {"שים", "קבע", "ווליום"}
+
+
+def _words(text: str) -> set:
+    """Whole words, so a verb cannot be found hiding inside a longer word."""
+    return set(re.findall(r"\w+", text))
+
+
 def _extract_number(text: str) -> Optional[int]:
     """Finds either digits (e.g. '50') or Hebrew number words (e.g. 'חמישים')."""
     # Check digits first
@@ -75,19 +94,11 @@ def parse_voice_command(text: str) -> Dict[str, Any]:
 
     num = _extract_number(cleaned)
 
-    # 1. ABSOLUTE PATTERNS with "ל-" or "על":
-    # e.g., "תנמיך ל-50", "תגביר ל-80%", "שים על 40", "כוון ל 30", "ווליום ל-50"
-    absolute_regex = re.compile(
-        r'(?:ל-|ל\s+|על\s+|בדיוק\s+)(\d+|' + '|'.join(HEBREW_WORDS_TO_NUMBERS.keys()) + r')'
-    )
-    is_explicitly_absolute = bool(absolute_regex.search(cleaned))
+    # "ל-50", "ל 50", "לחמישים", "על 40", "בדיוק 30" — a target to reach.
+    is_explicitly_absolute = bool(_ABSOLUTE.search(cleaned))
 
-    # 2. RELATIVE PATTERNS with "ב-":
-    # e.g., "תנמיך ב-50%", "תגביר ב 20 אחוז", "תרד ב-15"
-    relative_regex = re.compile(
-        r'(?:ב-|ב\s+)(\d+|' + '|'.join(HEBREW_WORDS_TO_NUMBERS.keys()) + r')'
-    )
-    is_explicitly_relative = bool(relative_regex.search(cleaned))
+    # "ב-50", "ב 50", "בחמישים" — an amount to move by.
+    is_explicitly_relative = bool(_RELATIVE.search(cleaned))
 
     # Direction: Down or Up?
     is_down = any(w in cleaned for w in ["תנמיך", "להנמיך", "תוריד", "להוריד", "תרד", "לרדת", "יותר חלש", "פחות", "חלש"])
@@ -112,9 +123,13 @@ def parse_voice_command(text: str) -> Dict[str, Any]:
                 "feedback": f"ווליום כוון ל-{num}%"
             }
 
-        # If neither "ב-" nor "ל-" was said explicitly, but a direction verb + number:
-        # e.g. "תנמיך 20 אחוז" vs "שים 50 אחוז"
-        if any(w in cleaned for w in ["שים", "קבע", "ווליום"]):
+        # Neither preposition was used, so fall back on the verb:
+        # "שים 50 אחוז" sets, "תנמיך 20 אחוז" moves.
+        #
+        # Matched as whole words. A substring test found "שים" inside
+        # "חמישים" and turned every relative command naming a Hebrew number
+        # into an absolute one.
+        if _words(cleaned) & _SET_VERBS:
             return {
                 "intent": "set_absolute",
                 "target": num,

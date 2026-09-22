@@ -102,13 +102,11 @@ def test_unrecognised_input(phrase):
     assert result["feedback"]
 
 
-# ------------------------------------------------------------- known defects
+# --------------------------------------------- prepositions fused to a word
 
-@pytest.mark.xfail(
-    reason="'חמישים' contains the substring 'שים', which the absolute-intent "
-           "keyword check matches, flipping a relative command to absolute",
-    strict=True,
-)
+# Hebrew attaches its prepositions to the following word, and dictation keeps
+# them attached. Both of these used to come out backwards.
+
 def test_attached_prefix_with_hebrew_number_should_stay_relative():
     result = parse_voice_command("תנמיך בחמישים")
 
@@ -116,13 +114,46 @@ def test_attached_prefix_with_hebrew_number_should_stay_relative():
     assert result["delta"] == -50
 
 
-@pytest.mark.xfail(
-    reason="the absolute regex requires 'ל-' or 'ל ', so a Hebrew number word "
-           "fused to the prefix ('לשמונים') is read as relative",
-    strict=True,
-)
 def test_fused_lamed_prefix_should_be_absolute():
     result = parse_voice_command("תגביר לשמונים")
 
     assert result["intent"] == "set_absolute"
     assert result["target"] == 80
+
+
+@pytest.mark.parametrize("phrase,delta", [
+    ("תנמיך בחמישים", -50),
+    ("תגביר בעשרים", 20),
+    ("תנמיך בעשר", -10),
+])
+def test_fused_bet_prefix_is_relative(phrase, delta):
+    result = parse_voice_command(phrase)
+
+    assert result["intent"] == "change_relative"
+    assert result["delta"] == delta
+
+
+@pytest.mark.parametrize("phrase,target", [
+    ("תגביר לשמונים", 80),
+    ("תנמיך לחמישים", 50),
+    ("תגביר למאה", 100),
+])
+def test_fused_lamed_prefix_is_absolute(phrase, target):
+    result = parse_voice_command(phrase)
+
+    assert result["intent"] == "set_absolute"
+    assert result["target"] == target
+
+
+def test_a_verb_is_not_matched_inside_a_longer_word():
+    """'שים' hides inside 'חמישים'; only the standalone verb should count."""
+    assert parse_voice_command("תנמיך בחמישים")["intent"] == "change_relative"
+    assert parse_voice_command("שים על 50")["intent"] == "set_absolute"
+
+
+def test_negation_still_wins_over_a_fused_prefix():
+    """'בטל השתקה' begins with the relative preposition; it must stay unmute."""
+    result = parse_voice_command("בטל השתקה")
+
+    assert result["intent"] == "mute"
+    assert result["value"] is False
