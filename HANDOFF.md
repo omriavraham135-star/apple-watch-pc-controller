@@ -79,12 +79,19 @@ The bundle identifier is `com.omriavraham.pcvolume`. A free Apple ID can only
 sign identifiers no other developer has registered; the generic
 `com.personal.pcvolume` risked a collision.
 
-### Remaining after that
-1. Run the setup command at the top of the README inside the VM (clones,
-   generates the Xcode project with XcodeGen, opens it)
-2. Pass the iPhone through to the VM over USB (VM → Removable Devices)
-3. Open `watch_pc_controller/`, run `xcodegen generate`, open the project, press Run
-4. The watch app installs via the iPhone, which must be paired to the watch
+### Progress toward the device
+- [x] Setup command from the top of the README run inside the VM — project
+      cloned, generated with XcodeGen, open in Xcode
+- [x] iPhone passed through to the VM over USB. `vmware.log` confirms
+      `Apple iPhone vid:05ac pid:12a8 ... Device connected`. VMware flags it
+      `never-autoconnect`: after an unplug or a VM reboot, reconnect it by hand
+      (VM → Removable Devices → Apple iPhone → Connect)
+- [x] CI green with the `com.omriavraham` identifiers
+- [ ] Signing: Team → Personal Team on both `PCVolumeApp` and `PCVolumeWatchApp`
+- [ ] Scheme `PCVolumeApp`, destination the physical iPhone, press Run
+- [ ] iPhone: Developer Mode on; trust the developer profile
+      (Settings → General → VPN & Device Management)
+- [ ] The watch app installs via the iPhone, which must be paired to the watch
 
 **A free Apple ID signs for 7 days.** Re-running Run in the VM each week is the
 ongoing cost; this is why the VM was chosen over borrowing a Mac.
