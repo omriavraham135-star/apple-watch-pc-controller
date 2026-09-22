@@ -13,6 +13,12 @@
 > ```
 > cd ~/apple-watch-pc-controller && git pull && zsh tools/vm/enable-bluetooth.zsh
 > ```
+>
+> **בדיקת Bluetooth** (אחרי Restart וחיבור המתאם):
+>
+> ```
+> system_profiler SPBluetoothDataType | head -20
+> ```
 
 שליטה במחשב Windows מה‑Apple Watch: ווליום בפקודות קוליות בעברית, נעילה וכיבוי, מצב המחשב, וכפתורי קיצור שאתה מגדיר.
 
