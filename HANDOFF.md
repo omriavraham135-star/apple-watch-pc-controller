@@ -80,18 +80,55 @@ sign identifiers no other developer has registered; the generic
 `com.personal.pcvolume` risked a collision.
 
 ### Progress toward the device
-- [x] Setup command from the top of the README run inside the VM — project
-      cloned, generated with XcodeGen, open in Xcode
-- [x] iPhone passed through to the VM over USB. `vmware.log` confirms
-      `Apple iPhone vid:05ac pid:12a8 ... Device connected`. VMware flags it
-      `never-autoconnect`: after an unplug or a VM reboot, reconnect it by hand
-      (VM → Removable Devices → Apple iPhone → Connect)
-- [x] CI green with the `com.omriavraham` identifiers
-- [ ] Signing: Team → Personal Team on both `PCVolumeApp` and `PCVolumeWatchApp`
-- [ ] Scheme `PCVolumeApp`, destination the physical iPhone, press Run
-- [ ] iPhone: Developer Mode on; trust the developer profile
-      (Settings → General → VPN & Device Management)
-- [ ] The watch app installs via the iPhone, which must be paired to the watch
+- [x] Project cloned, generated with XcodeGen, open in Xcode inside the VM
+- [x] Signing with the free Personal Team, both targets
+- [x] **Built and installed on the physical iPhone** (Xcode: "Finished running
+      PCVolumeApp on iPhone"). The iPhone app is only a carrier for the watch app.
+- [ ] **Watch — BLOCKED on the free route.** The Watch app on the iPhone says
+      "could not install at this time". With a free team, the watch must be
+      registered by Xcode seeing it once, and Developer Mode on the watch only
+      appears after that. Xcode never discovers the watch:
+      `devicectl list devices` and `xctrace list devices` show only the iPhone,
+      and the pairing daemon's log has no watch activity at all.
+
+### What was tried for the watch (all done, none sufficient)
+- VM network NAT → **Bridged** (Mac on the home LAN, same subnet as the watch).
+  The MAC is unchanged, so the Apple ID fix still holds.
+- **Bluetooth in the VM**: the host's spare CSR8510 USB dongle (Windows uses
+  the Intel radio, so the CSR is otherwise idle) is passed in, and
+  `tools/vm/enable-bluetooth.zsh` added BlueToolFixup 2.7.2 plus its NVRAM
+  variables to OpenCore. macOS reports the controller as `State: On`.
+  VMware does not auto-connect the dongle after a VM power cycle.
+- Reset Location & Privacy on the iPhone and re-trusted, so the pairing that
+  is supposed to discover the watch would run again with Bluetooth present.
+- `tools/vm/watch-diagnose.zsh` reports each layer; it changes nothing.
+- Untested suspects: the Mac is not signed into iCloud; the watch (SE, 2.4GHz)
+  and the PC (5GHz) are on different bands of a mesh network.
+- Apple acknowledges a watch-connection regression in Xcode 26.2+ that hits
+  real Macs too (forum thread 813066). No report found of anyone deploying to a
+  watch from a macOS VM.
+
+### Recommended route: TestFlight (needs the paid program, $99/year)
+The VM builds and uploads over the internet. No iPhone cable, no Xcode-to-watch
+connection, no Developer Mode (Apple: TestFlight installs don't need it), and
+builds last 90 days. Waiting on the user's decision. To do if yes: app icons for
+both targets, `ITSAppUsesNonExemptEncryption = NO`, an App Store Connect record,
+Archive → Distribute from the VM.
+
+### USB passthrough is flaky, and why
+The iPhone re-enumerates about 0.5 s after it is handed to the VM. If VMware
+catches it again it stays for hours. About half the time the VMware USB
+Arbitration Service connection breaks at that moment
+(`USBArbLib: Received message size(1701667190) exceeds maxmium size(4096)`,
+then `New set of 0 USB devices` for 15–55 s), and Windows takes the phone back.
+Restarting the service did not help. The fix is to retry Connect until the menu
+offers Disconnect.
+
+### Host changes and backups from this session
+- Wi-Fi band preference was changed for a test and **restored**
+  (`RoamingPreferredBandType=0`, `WirelessMode=34`, as found).
+- `D:\macos-vm\VM\opencore.iso.before-bt` — OpenCore before the Bluetooth
+  change. Inside the guest, the EFI backup is at `~/opencore-backup-*`.
 
 **A free Apple ID signs for 7 days.** Re-running Run in the VM each week is the
 ongoing cost; this is why the VM was chosen over borrowing a Mac.
