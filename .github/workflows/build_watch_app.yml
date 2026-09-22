@@ -1,52 +1,80 @@
-name: Build Apple Watch IPA
+name: Build Watch App
 
 on:
   push:
     branches: [ main, master ]
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-14
+    # macos-15 ships Xcode 16, which is the minimum for the Orb package: its
+    # manifest declares swift-tools-version 6.0, and Xcode 15 cannot read it.
+    runs-on: macos-15
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_15.4.app || sudo xcode-select -switch /Applications/Xcode.app
+      - name: Report toolchain
+        run: |
+          xcodebuild -version
+          swift --version
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Generate Xcode Project
-        run: |
-          cd watch_pc_controller
-          xcodegen generate
+      - name: Generate Xcode project
+        working-directory: watch_pc_controller
+        run: xcodegen generate
 
-      - name: Build Application Archive
+      - name: Resolve packages
+        working-directory: watch_pc_controller
         run: |
-          cd watch_pc_controller
-          xcodebuild -project PCVolumeWatch.xcodeproj \
+          xcodebuild -resolvePackageDependencies \
+            -project PCVolumeWatch.xcodeproj \
+            -scheme PCVolumeApp
+
+      # Compilation is the point of this job. Signing needs a developer account
+      # and the physical devices, so it happens locally, not here.
+      - name: Build
+        working-directory: watch_pc_controller
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project PCVolumeWatch.xcodeproj \
             -scheme PCVolumeApp \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath build/PCVolume.xcarchive \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            archive
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | xcbeautify || xcodebuild build \
+            -project PCVolumeWatch.xcodeproj \
+            -scheme PCVolumeApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
 
-      - name: Package Payload to IPA
+      - name: Confirm the watch app was embedded
+        working-directory: watch_pc_controller
         run: |
-          cd watch_pc_controller
-          mkdir -p Payload
-          cp -r build/PCVolume.xcarchive/Products/Applications/PCVolumeApp.app Payload/
-          zip -r PCVolume.ipa Payload
-          mkdir -p output
-          mv PCVolume.ipa output/
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PCVolume-Watch-IPA
-          path: watch_pc_controller/output/PCVolume.ipa
-          retention-days: 14
+          APP=$(find build/Build/Products -name "PCVolumeApp.app" -maxdepth 3 | head -1)
+          echo "host app: $APP"
+          ls -la "$APP"
+          # Current Xcode expects the watch app in PlugIns/, not Watch/.
+          # Installation fails silently on the device if this is wrong.
+          if [ -d "$APP/PlugIns/PCVolumeWatchApp.app" ]; then
+            echo "watch app embedded in PlugIns/ as expected"
+          elif [ -d "$APP/Watch/PCVolumeWatchApp.app" ]; then
+            echo "::error::watch app landed in Watch/ instead of PlugIns/ — it will not install"
+            exit 1
+          else
+            echo "::error::no embedded watch app found"
+            find "$APP" -maxdepth 2 -name "*.app"
+            exit 1
+          fi
