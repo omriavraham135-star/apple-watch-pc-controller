@@ -1,7 +1,9 @@
 name: PCVolumeWatch
 
 options:
-  bundleIdPrefix: com.personal
+  # A free Apple ID can only sign bundle identifiers that no other developer has
+  # registered, so this must be distinctive; a generic prefix risks a collision.
+  bundleIdPrefix: com.omriavraham
   createIntermediateGroups: true
   deploymentTarget:
     iOS: "17.0"
@@ -25,7 +27,7 @@ targets:
       - path: ios_app
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume
+        PRODUCT_BUNDLE_IDENTIFIER: com.omriavraham.pcvolume
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "PC Control"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -49,14 +51,14 @@ targets:
       - path: apple_watch_app
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.personal.pcvolume.watchkitapp
-        WKCompanionAppBundleIdentifier: com.personal.pcvolume
+        PRODUCT_BUNDLE_IDENTIFIER: com.omriavraham.pcvolume.watchkitapp
+        WKCompanionAppBundleIdentifier: com.omriavraham.pcvolume
     info:
       path: apple_watch_app/Info.plist
       properties:
         CFBundleDisplayName: "PC Control"
         WKApplication: true
-        WKCompanionAppBundleIdentifier: com.personal.pcvolume
+        WKCompanionAppBundleIdentifier: com.omriavraham.pcvolume
         WKWatchOnly: false
         NSMicrophoneUsageDescription: "שליטה קולית בווליום של המחשב"
         NSSpeechRecognitionUsageDescription: "זיהוי פקודות דיבור בעברית"

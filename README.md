@@ -3,11 +3,10 @@
 > **הגדרת ה‑VM (זמני) — הדבק ב‑Terminal של ה‑Mac:**
 >
 > ```
-> sudo nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revpatch=sbvmm,asset,novmm && nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revpatch && ifconfig en0 | grep ether
+> cd ~ && (git clone https://github.com/omriavraham135-star/apple-watch-pc-controller.git 2>/dev/null || git -C apple-watch-pc-controller pull) && cd apple-watch-pc-controller/watch_pc_controller && curl -sL https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip -o /tmp/xg.zip && unzip -oq /tmp/xg.zip -d /tmp/xg && /tmp/xg/xcodegen/bin/xcodegen generate && open PCVolumeWatch.xcodeproj
 > ```
 >
-> מסתיר מ‑macOS שהוא רץ במכונה וירטואלית (OC4VM `cloak on`). נדרש כדי ש‑Apple ID יתחבר.
-> ביטול: אותה פקודה עם `sbvmm,asset` במקום `sbvmm,asset,novmm`.
+> מוריד את הפרויקט, מייצר את פרויקט ה‑Xcode ופותח אותו. בטוח להריץ שוב — מעדכן במקום להוריד מחדש.
 
 שליטה במחשב Windows מה‑Apple Watch: ווליום בפקודות קוליות בעברית, נעילה וכיבוי, מצב המחשב, וכפתורי קיצור שאתה מגדיר.
 

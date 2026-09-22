@@ -156,7 +156,7 @@ jobs:
           # NSAllowsLocalNetworking, which covers private ranges.
           HOST=$(ipconfig getifaddr en0 || echo 127.0.0.1)
           echo "pointing the watch at $HOST"
-          xcrun simctl spawn "$UDID" defaults write com.personal.pcvolume.watchkitapp pc_ip_address "$HOST"
+          xcrun simctl spawn "$UDID" defaults write com.omriavraham.pcvolume.watchkitapp pc_ip_address "$HOST"
 
       - name: Capture every page
         run: |
@@ -164,9 +164,9 @@ jobs:
           mkdir -p shots
           NAMES=(voice power stats actions)
           for i in 0 1 2 3; do
-            xcrun simctl terminate "$UDID" com.personal.pcvolume.watchkitapp 2>/dev/null || true
+            xcrun simctl terminate "$UDID" com.omriavraham.pcvolume.watchkitapp 2>/dev/null || true
             sleep 1
-            xcrun simctl launch "$UDID" com.personal.pcvolume.watchkitapp -startPage "$i"
+            xcrun simctl launch "$UDID" com.omriavraham.pcvolume.watchkitapp -startPage "$i"
             # give the page time to fetch and settle
             sleep 6
             xcrun simctl io "$UDID" screenshot "shots/${i}-${NAMES[$i]}.png"

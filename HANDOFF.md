@@ -48,23 +48,40 @@ Mac, so a macOS VM is being built on their Windows machine.
 - macOS **Tahoe** installed in the VM at `D:\macos-vm\VM\macos.vmx`
 - Windows Defender exclusion added for the VM folder
 
-### Blocked on, right now
-**Apple ID will not sign in inside the VM.** Apple rejects App Store sign-in from
-virtual machines that lack a valid hardware serial. The user had just reported
-this and had not yet said what the error message was.
+### Apple ID — SOLVED. Do not undo any of this.
+Xcode sign-in failed with "Verification Failed: An unknown error occurred" until
+all three of these were in place. Each one alone was not enough.
 
-**The planned workaround, not yet tried:**
-1. Skip sign-in during macOS setup ("Set Up Later")
-2. Download Xcode directly from `developer.apple.com` rather than the App Store —
-   a web login works where App Store sign-in does not
-3. Add the Apple ID inside Xcode (Settings → Accounts) for signing — a different
-   auth path that usually succeeds in a VM
+1. **Mac identity** — `oc4vm/tools/windows/spoof.cmd macos.vmx` wrote an iMac19,2
+   serial, board-id and MLB into the vmx. Before that the VM had no identity at
+   all. (The script prints `'EM' is not recognized` errors — harmless; check the
+   vmx, not the output.)
+2. **Hide the hypervisor** — OC4VM's `cloak on`, run inside the guest:
+   `sudo nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revpatch=sbvmm,asset,novmm`.
+   Apple services refuse a machine that reports running under a VM. OpenCore's
+   config leaves `revpatch` out of its NVRAM Delete list, so this persists.
+3. **ROM = en0 MAC** — spoof generates a random ROM; Apple expects it to match the
+   network interface. Set `efi.nvram.var.ROM = "%00%0C%29%2D%A7%F7"` to match
+   `ethernet0.generatedAddress = "00:0c:29:2d:a7:f7"`.
 
-If that fails, the next lever is generating valid SMBIOS data with OpenCore's
-GenSMBIOS so the VM presents a plausible serial.
+**Do not move or copy the VM folder.** VMware regenerates the MAC when it thinks
+a VM was copied; the ROM would then stop matching and sign-in would break again.
+
+Backups of the vmx before each change: `macos.vmx.before-spoof`, `macos.vmx.before-rom`.
+
+### Xcode
+**Xcode 26.6 Universal**, not 27: Xcode 27 runs only on Apple silicon and the VM
+is Intel. 26.6 needs macOS 26.2+ (the VM runs 26.7) and deploys to iOS 26.6,
+which is what the iPhone runs. Do not update the iPhone or watch to 27 — Xcode 26
+may refuse to install on them, and no Intel Mac can run Xcode 27.
+
+The bundle identifier is `com.omriavraham.pcvolume`. A free Apple ID can only
+sign identifiers no other developer has registered; the generic
+`com.personal.pcvolume` risked a collision.
 
 ### Remaining after that
-1. Install Xcode in the VM
+1. Run the setup command at the top of the README inside the VM (clones,
+   generates the Xcode project with XcodeGen, opens it)
 2. Pass the iPhone through to the VM over USB (VM → Removable Devices)
 3. Open `watch_pc_controller/`, run `xcodegen generate`, open the project, press Run
 4. The watch app installs via the iPhone, which must be paired to the watch
@@ -108,8 +125,7 @@ Disks   both SSD; project on D:
 Watch   watchOS 26  → needs a current Xcode, which is why Tahoe was chosen
 ```
 
-The VM has 4 vCPUs. Raising it to 8 was suggested and not yet done — it needs
-the VM powered off (VM → Settings → Processors).
+The VM has 8 vCPUs and 8 GB of RAM.
 
 ---
 
@@ -169,8 +185,8 @@ requests. A test spies on `fetch` to prove it.
    network can change the volume or shut the machine down. Raised several times,
    never addressed. Actions are at least run by id only — a command string from
    the network is never executed.
-2. VM vCPU count could go from 4 to 8.
-3. `macos-dl\` (18 GB) and `unlocker\` can be deleted.
+2. `macos-dl\` (18 GB) and `unlocker\` can be deleted.
+3. The README's top block is a temporary VM helper; move it into docs when done.
 
 ---
 
