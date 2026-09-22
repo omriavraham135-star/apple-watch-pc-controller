@@ -2,7 +2,7 @@ import SwiftUI
 import WatchKit
 
 struct ContentView: View {
-    @AppStorage("pc_ip_address") private var pcIpAddress = "192.168.68.59"
+    @AppStorage("pc_ip_address") private var pcIpAddress = ""
     @StateObject private var network = NetworkClient()
     
     @State private var state: AssistantState = .idle
@@ -189,7 +189,7 @@ struct SettingsView: View {
             TextField("IP Address", text: $ipAddress)
                 .font(.system(.body, design: .monospaced))
 
-            Text("ברירת מחדל: 192.168.68.59")
+            Text("הכתובת מוצגת בדשבורד במחשב")
                 .font(.footnote)
                 .foregroundColor(.secondary)
         }

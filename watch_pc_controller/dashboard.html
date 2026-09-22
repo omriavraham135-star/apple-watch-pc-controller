@@ -2,642 +2,1089 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Apple Watch Minimalist Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PC Control · Watch Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue:   #0A84FF;
+      --teal:   #40C8E0;
+      --indigo: #5E5CE6;
+      --purple: #BF5AF2;
+      --green:  #30D158;
+      --red:    #FF453A;
+      --orange: #FF9F0A;
+
+      --ink:       #f5f5f7;
+      --ink-dim:   rgba(245,245,247,0.55);
+      --ink-faint: rgba(245,245,247,0.30);
+
+      --screen-w: 272px;
+      --screen-h: 334px;
+
+      --orb-glow: rgba(46,91,255,0.5);
+      --orb-breathe: 5.2s;
+
+      --ease: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+
     body {
-      background: radial-gradient(circle at top, #182234, #080c14);
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background:
+        radial-gradient(1100px 700px at 12% -10%, #1a1f3a 0%, transparent 60%),
+        radial-gradient(900px 600px at 96% 110%, #2a1533 0%, transparent 55%),
+        #08080c;
+      color: var(--ink);
       min-height: 100vh;
+      padding: 26px 22px 44px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
+      gap: 26px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .header-bar {
-      text-align: center;
-      margin-bottom: 28px;
+    /* ---------------------------------------------------------------- header */
+
+    .masthead {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
     }
-    .header-bar h1 {
-      font-size: 20px;
-      font-weight: 600;
-      color: #38bdf8;
-      letter-spacing: -0.5px;
-    }
-    .ip-badge {
-      display: inline-block;
-      background: rgba(56, 189, 248, 0.1);
-      color: #38bdf8;
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      padding: 2px 10px;
-      border-radius: 99px;
-      font-family: monospace;
+    .masthead h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .masthead .sub { font-size: 12px; color: var(--ink-faint); }
+    .endpoint {
+      font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
       font-size: 11px;
-      margin-top: 6px;
+      color: var(--ink-dim);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 7px;
+      padding: 4px 9px;
+      direction: ltr;
     }
 
-    .container {
+    /* ----------------------------------------------------------------- stage */
+
+    .stage {
+      width: 100%;
+      max-width: 1200px;
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
+      gap: 36px;
       justify-content: center;
-      gap: 40px;
-      max-width: 860px;
-      width: 100%;
+      align-items: flex-start;
     }
 
-    /* Apple Watch Hardware Chassis */
-    .watch-chassis {
-      position: relative;
-      width: 250px;
-      height: 315px;
-      background: #1c1c1e;
-      border-radius: 56px;
-      padding: 10px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), inset 0 0 2px 2px #3a3a3c;
-      display: flex;
+    .watches { display: flex; gap: 26px; flex-wrap: wrap; justify-content: center; }
+    .watch { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+    .watch-tag {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      cursor: default;
+      gap: 6px;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      white-space: nowrap;
+      order: 99;
     }
-    /* Digital Crown */
-    .watch-crown {
+    .watch-tag::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .watch-tag.live {
+      color: var(--green);
+      background: rgba(48,209,88,0.12);
+      box-shadow: 0 0 0 1px rgba(48,209,88,0.3) inset;
+    }
+    .watch-tag.demo {
+      color: var(--orange);
+      background: rgba(255,159,10,0.12);
+      box-shadow: 0 0 0 1px rgba(255,159,10,0.3) inset;
+    }
+
+    /* ----------------------------------------------------------------- watch */
+
+    .chassis {
+      position: relative;
+      width: calc(var(--screen-w) + 26px);
+      height: calc(var(--screen-h) + 26px);
+      border-radius: 76px;
+      padding: 13px;
+      background: linear-gradient(150deg, #4a4a52 0%, #26262c 26%, #17171b 55%, #34343c 100%);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.22) inset,
+        0 -1px 0 rgba(0,0,0,0.6) inset,
+        0 34px 70px -24px rgba(0,0,0,0.9),
+        0 0 0 1px rgba(0,0,0,0.5);
+    }
+
+    .crown {
       position: absolute;
-      right: -10px;
-      top: 65px;
-      width: 10px;
-      height: 48px;
-      background: linear-gradient(to right, #2c2c2e, #48484a);
+      left: -7px; top: 27%;
+      width: 8px; height: 44px;
       border-radius: 4px;
-      transition: transform 0.1s;
+      background: linear-gradient(180deg, #6a6a74, #3a3a42 40%, #55555f);
+      box-shadow: -1px 0 3px rgba(0,0,0,0.65);
     }
-    .crown-rotating {
-      animation: crown-twist 0.15s ease-out;
-    }
-    @keyframes crown-twist {
-      0% { transform: translateY(-2px); }
-      50% { transform: translateY(2px); }
-      100% { transform: translateY(0); }
-    }
-    .watch-chassis::after {
+    .crown::after {
       content: '';
       position: absolute;
-      right: -7px;
-      top: 140px;
-      width: 7px;
-      height: 42px;
-      background: #2c2c2e;
+      inset: 4px 2px;
       border-radius: 3px;
+      background: repeating-linear-gradient(180deg, rgba(0,0,0,0.42) 0 1px, transparent 1px 3px);
+    }
+    .crown.spin { animation: crownSpin 0.32s var(--ease); }
+    @keyframes crownSpin { 50% { transform: translateX(-1.5px) scaleY(0.96); } }
+
+    .side-btn {
+      position: absolute;
+      left: -5px; top: 52%;
+      width: 6px; height: 32px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #55555f, #2e2e35);
+      box-shadow: -1px 0 3px rgba(0,0,0,0.6);
     }
 
-    /* Watch OLED Screen - Pure Minimalist Apple */
-    .watch-screen {
-      width: 100%;
-      height: 100%;
-      background: #000000;
-      border-radius: 46px;
+    .screen {
+      position: relative;
+      width: var(--screen-w);
+      height: var(--screen-h);
+      border-radius: 63px;
       overflow: hidden;
-      padding: 14px 16px 16px;
+      background: #000;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      position: relative;
-      user-select: none;
+      isolation: isolate;
+    }
+    .screen::after {
+      content: '';
+      position: absolute; inset: 0;
+      pointer-events: none;
+      z-index: 60;
+      background: linear-gradient(145deg, rgba(255,255,255,0.055) 0%, transparent 34%, transparent 72%, rgba(255,255,255,0.02) 100%);
     }
 
-    /* Minimal Top Bar */
-    .top-bar {
+    /* --------------------------------------------------------------- top bar */
+
+    .topbar {
+      position: relative;
+      z-index: 20;
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
+      padding: 13px 22px 4px;
+      font-size: 12.5px;
       font-weight: 600;
-      color: #94a3b8;
+      direction: ltr;
     }
-    .vol-badge-group {
+    .topbar .left { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--orange);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    .dot.live { background: var(--green); box-shadow: 0 0 7px rgba(48,209,88,0.75); }
+    .topbar .time { color: var(--teal); font-variant-numeric: tabular-nums; }
+
+    /* ----------------------------------------------------------------- pages */
+
+    .pages {
+      flex: 1 1 auto;
       display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+      overscroll-behavior-x: contain;
+      /* An RTL scroll container reports scrollLeft as 0 → -N, so every positive
+         scrollTo is clamped to 0 and the pages never move. Keep the scroll axis
+         LTR and restore RTL on the pages themselves. */
+      direction: ltr;
+      touch-action: pan-y;
+      cursor: grab;
+    }
+    .pages::-webkit-scrollbar { display: none; }
+    .pages.dragging { cursor: grabbing; scroll-behavior: auto; scroll-snap-type: none; }
+
+    .page {
+      flex: 0 0 100%;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+      height: 100%;
+      padding: 0 16px 8px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: none;
+      direction: rtl;
+    }
+    .page::-webkit-scrollbar { display: none; }
+
+    .page-title {
+      flex: 0 0 auto;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      text-align: center;
+      padding: 2px 0 8px;
+    }
+
+    .dots {
+      position: relative;
+      z-index: 20;
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: center;
       align-items: center;
       gap: 5px;
+      padding: 6px 0 12px;
     }
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      background: #34d399;
+    .dots i {
+      width: 5px; height: 5px;
       border-radius: 50%;
-      display: inline-block;
-      box-shadow: 0 0 6px #34d399;
+      background: rgba(255,255,255,0.22);
+      transition: all 0.32s var(--ease);
     }
-    .vol-badge {
-      color: #38bdf8;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-    }
+    .dots i.on { background: var(--ink); width: 14px; border-radius: 3px; }
 
-    /* Center Stage: The Orb */
+    /* ------------------------------------------------------------------- orb */
+
     .orb-stage {
+      flex: 1 1 auto;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: auto 0;
+      min-height: 0;
       cursor: pointer;
-      position: relative;
+      -webkit-tap-highlight-color: transparent;
     }
+    .orb {
+      position: relative;
+      width: 118px; height: 118px;
+      display: grid;
+      place-items: center;
+      animation: breathe var(--orb-breathe) ease-in-out infinite;
+      transition: transform 0.4s var(--ease);
+    }
+    @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+    .orb-stage:active .orb { transform: scale(0.94); }
+
     .orb-aura {
       position: absolute;
-      width: 130px;
-      height: 130px;
+      inset: -30px;
       border-radius: 50%;
-      filter: blur(22px);
-      opacity: 0.65;
-      transition: all 0.6s ease;
-      background: radial-gradient(circle, #06b6d4, #8b5cf6, transparent 70%);
-    }
-    .orb-sphere {
-      position: relative;
-      width: 105px;
-      height: 105px;
-      border-radius: 50%;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: inset 0 0 20px rgba(255,255,255,0.45), 0 0 24px rgba(6, 182, 212, 0.65);
-      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.92) 0%, rgba(56,189,248,0.75) 30%, rgba(139,92,246,0.85) 60%, rgba(15,23,42,0.95) 90%);
-    }
-    .orb-sphere:hover {
-      transform: scale(1.04);
-    }
-
-    /* Waveform visualizer */
-    .wave-bars {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      z-index: 2;
-    }
-    .wave-bar {
-      width: 3px;
-      background: white;
-      border-radius: 99px;
-      animation: bar-dance 0.8s ease-in-out infinite alternate;
-    }
-    @keyframes bar-dance {
-      0% { height: 6px; opacity: 0.6; }
-      100% { height: 26px; opacity: 1; }
-    }
-
-    /* State animations */
-    .state-idle .orb-sphere {
-      animation: orb-breathe 4s ease-in-out infinite;
-      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.5) 0%, rgba(71,85,105,0.6) 30%, rgba(30,41,59,0.95) 80%);
-      box-shadow: inset 0 0 15px rgba(255,255,255,0.2), 0 0 15px rgba(56, 189, 248, 0.3);
-    }
-    .state-idle .orb-aura {
-      background: radial-gradient(circle, #38bdf8, #6366f1, transparent 70%);
-      opacity: 0.35;
-    }
-
-    .state-listening .orb-sphere {
-      animation: orb-listen 1.2s ease-in-out infinite;
-      box-shadow: inset 0 0 25px rgba(255,255,255,0.7), 0 0 35px #06b6d4;
-    }
-    .state-listening .orb-aura {
-      background: radial-gradient(circle, #06b6d4, #d946ef, transparent 70%);
-      opacity: 0.85;
-      transform: scale(1.15);
-    }
-
-    .state-thinking .orb-sphere {
-      animation: orb-spin 2s linear infinite;
-      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, #d946ef 35%, #7e22ce 70%, #0f172a 95%);
-      box-shadow: 0 0 40px #d946ef;
-    }
-    .state-thinking .orb-aura {
-      background: radial-gradient(circle, #d946ef, #a855f7, transparent 70%);
-      opacity: 0.9;
-    }
-
-    .state-success .orb-sphere {
-      animation: orb-pop 0.6s ease-out;
-      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, #34d399 30%, #10b981 70%, #064e3b 95%);
-      box-shadow: 0 0 45px #34d399;
-    }
-    .state-success .orb-aura {
-      background: radial-gradient(circle, #34d399, #10b981, transparent 70%);
-      opacity: 0.95;
-    }
-
-    @keyframes orb-breathe {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
-    @keyframes orb-listen {
-      0%, 100% { transform: scale(1.03); }
-      50% { transform: scale(1.15); }
-    }
-    @keyframes orb-spin {
-      0% { transform: rotate(0deg) scale(1.05); }
-      100% { transform: rotate(360deg) scale(1.05); }
-    }
-    @keyframes orb-pop {
-      0% { transform: scale(0.9); }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1.04); }
-    }
-
-    /* Apple Minimalist Capsule Slider */
-    .slider-wrapper {
-      width: 100%;
-    }
-    .apple-slider-track {
-      position: relative;
-      width: 100%;
-      height: 36px;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 99px;
-      overflow: hidden;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .apple-slider-track:hover {
-      border-color: rgba(56, 189, 248, 0.45);
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.25), inset 0 1px 3px rgba(0,0,0,0.4);
-    }
-
-    .apple-slider-fill {
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      width: {{VOL}}%;
-      background: linear-gradient(90deg, #0284c7 0%, #38bdf8 70%, #818cf8 100%);
-      border-radius: 99px;
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
-      transition: width 0.08s ease-out;
+      background: radial-gradient(circle at 50% 50%, var(--orb-glow) 0%, transparent 66%);
+      filter: blur(16px);
+      animation: auraPulse calc(var(--orb-breathe) * 1.35) ease-in-out infinite;
       pointer-events: none;
     }
+    @keyframes auraPulse {
+      0%,100% { opacity: 0.5; transform: scale(0.94); }
+      50%     { opacity: 0.9; transform: scale(1.08); }
+    }
 
-    .slider-content {
+    .orb-canvas {
       position: relative;
-      width: 100%;
-      height: 100%;
+      z-index: 2;
+      width: 118px; height: 118px;
+      display: block;
+      border-radius: 50%;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,0.55));
+    }
+
+    .orb-caption {
+      position: absolute;
+      bottom: -24px; left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-dim);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .orb-caption.show { opacity: 1; }
+
+    .state-idle      { --orb-glow: rgba(46,91,255,0.50);  --orb-breathe: 5.2s; }
+    .state-listening { --orb-glow: rgba(64,200,224,0.70); --orb-breathe: 1.6s; }
+    .state-thinking  { --orb-glow: rgba(191,90,242,0.65); --orb-breathe: 2.2s; }
+    .state-success   { --orb-glow: rgba(48,209,88,0.75);  --orb-breathe: 2.6s; }
+    .state-error     { --orb-glow: rgba(255,69,58,0.70);  --orb-breathe: 2.6s; }
+
+    /* ---------------------------------------------------------------- volume */
+
+    .vol { flex: 0 0 auto; padding: 10px 2px 4px; }
+    .vol-track {
+      position: relative;
+      height: 36px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.09);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset;
+      overflow: hidden;
+      cursor: pointer;
+      touch-action: none;
+    }
+    .vol-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: 18px;
+      background: linear-gradient(90deg, #0A84FF 0%, #40C8E0 55%, #5E5CE6 100%);
+      box-shadow: 0 0 18px -3px rgba(64,200,224,0.75);
+      transition: width 0.16s var(--ease);
+    }
+    .vol-row {
+      position: absolute; inset: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 12px;
-      z-index: 3;
+      direction: ltr;
       pointer-events: none;
+      color: #fff;
     }
-    .slider-icon {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.9);
-      display: flex;
-      align-items: center;
-      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
-    }
-    .slider-pct {
-      font-size: 12px;
-      font-weight: 700;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      color: white;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-      letter-spacing: 0.3px;
+    .vol-row .pct {
+      font-size: 12.5px; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.45);
     }
 
-    /* Side Control Panel */
-    .controls-panel {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 24px;
-      padding: 24px;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-    }
-    .controls-panel h2 {
-      font-size: 15px;
-      color: #38bdf8;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .test-grid {
+    /* ------------------------------------------------------- tiles, shared */
+
+    .ptiles, .tiles {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
-      margin-bottom: 16px;
+      padding: 2px 0 6px;
     }
-    .cmd-btn {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #f8fafc;
-      border-radius: 10px;
+
+    .ptile, .atile {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      aspect-ratio: 1 / 0.9;
+      /* overridden per grid below */
+      border: none;
+      border-radius: 20px;
+      overflow: hidden;
+      isolation: isolate;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--ink);
+      background:
+        radial-gradient(130% 100% at 50% 0%, rgba(var(--accent), 0.28) 0%, transparent 72%),
+        linear-gradient(168deg, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.028) 100%);
+      box-shadow:
+        0 0 0 1px rgba(var(--accent), 0.26) inset,
+        0 6px 16px -12px rgba(var(--accent), 0.85);
+      transition: transform 0.2s var(--ease), box-shadow 0.3s ease;
+      -webkit-tap-highlight-color: transparent;
+      animation: tileIn 0.52s var(--ease) both;
+      animation-delay: calc(var(--i, 0) * 55ms);
+    }
+    /* Power tiles are square so the traced ring reads as a deliberate frame. */
+    .ptile { aspect-ratio: 1 / 1; }
+
+    .ptile:active, .atile:active { transform: scale(0.945); }
+
+    .ptile::before, .atile::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      z-index: 4;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.34), transparent);
+      pointer-events: none;
+    }
+
+    @keyframes tileIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.84); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .ptile-glyph, .atile-glyph {
+      position: relative;
+      z-index: 2;
+      width: 38px; height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: rgb(var(--accent));
+      background: linear-gradient(158deg, rgba(var(--accent), 0.26) 0%, rgba(var(--accent), 0.07) 100%);
+      box-shadow:
+        0 0 0 1px rgba(var(--accent), 0.3) inset,
+        0 1px 0 rgba(255,255,255,0.20) inset;
+      transition:
+        transform 0.25s var(--ease),
+        opacity 0.2s ease,
+        color 0.3s ease,
+        background 0.3s ease,
+        box-shadow 0.3s ease;
+    }
+
+    .ptile-label, .atile-cap {
+      position: relative;
+      z-index: 2;
+      max-width: 100%;
+      padding: 0 5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      text-align: center;
+      color: var(--ink-dim);
+      transition: color 0.2s ease;
+    }
+    .ptile-label { color: var(--ink); font-size: 11px; }
+
+    /* ------------------------------------------------- the accidental-touch guard */
+
+    /* accent rising from the base; driven per frame while held */
+    .ptile-fill {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      transform: scaleY(0);
+      transform-origin: bottom;
+      background: linear-gradient(0deg, rgba(var(--accent), 0.95) 0%, rgba(var(--accent), 0.3) 100%);
+    }
+
+    /* the ring that closes around a guarded tile */
+    .hold-ring {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 3;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .hold-ring path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .hold-ring-track { stroke: rgba(255,255,255,0.13); stroke-width: 2; }
+    .hold-ring-val {
+      stroke: #fff;
+      stroke-width: 3;
+      opacity: 0;
+      filter: drop-shadow(0 0 5px rgba(255,255,255,0.85));
+      transition: opacity 0.3s ease;
+    }
+    .ptile.holding .hold-ring-val,
+    .ptile.committed .hold-ring-val,
+    .ptile.unwinding .hold-ring-val { opacity: 1; }
+    .ptile.unwinding .hold-ring-val { transition: stroke-dashoffset 0.3s var(--ease); }
+    .ptile.unwinding .ptile-fill { transition: transform 0.3s var(--ease); }
+
+    .ptile.holding .ptile-glyph { opacity: 0; transform: scale(0.55); }
+
+    /* the countdown that takes the icon's place while held */
+    .ptile-count {
+      position: absolute;
+      z-index: 4;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) translateY(-9px);
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .ptile.holding .ptile-count { opacity: 1; }
+
+    .ptile.committed { animation: commitFlash 0.62s var(--ease); }
+    @keyframes commitFlash {
+      0%   { box-shadow: 0 0 0 1px rgba(255,255,255,0.95) inset, 0 0 0 0 rgba(255,255,255,0.8); }
+      35%  { box-shadow: 0 0 0 1px rgba(255,255,255,0.95) inset, 0 0 34px 6px rgba(255,255,255,0.55); }
+      100% { box-shadow: 0 0 0 1px rgba(var(--accent), 0.3) inset, 0 0 0 0 rgba(255,255,255,0); }
+    }
+
+    /* ------------------------------------------------------------ stat rings */
+
+    .rings-wrap {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 0;
+      padding-bottom: 6px;
+    }
+    .rings { width: 132px; height: 132px; flex: 0 0 auto; }
+    .rings circle { fill: none; stroke-linecap: round; }
+    .rings .track { stroke: rgba(255,255,255,0.10); }
+    .rings .val { transition: stroke-dashoffset 0.6s var(--ease); }
+
+    .legend { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+    .legend-row { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 500; }
+    .legend-row .swatch { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+    .legend-row .name { color: var(--ink-dim); }
+    .legend-row .num {
+      margin-inline-start: auto;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      direction: ltr;
+    }
+    .legend-row .note { font-size: 10px; color: var(--ink-faint); direction: ltr; }
+
+    /* ----------------------------------------------------------- action tiles */
+
+    .atile-ripple {
+      position: absolute;
+      left: var(--rx, 50%); top: var(--ry, 50%);
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(var(--accent), 0.95) 0%, rgba(var(--accent), 0) 70%);
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .atile.rippling .atile-ripple { animation: ripple 0.66s var(--ease); }
+    @keyframes ripple {
+      0%   { transform: translate(-50%,-50%) scale(0);  opacity: 0.85; }
+      100% { transform: translate(-50%,-50%) scale(20); opacity: 0; }
+    }
+
+    .atile-check {
+      position: absolute;
+      z-index: 3;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) translateY(-9px);
+      opacity: 0;
+      color: #fff;
+      transition: opacity 0.2s ease;
+    }
+    .atile-check path { stroke-dasharray: 30; stroke-dashoffset: 30; }
+    .atile.done .atile-check { opacity: 1; }
+    .atile.done .atile-check path { animation: drawCheck 0.42s var(--ease) forwards; }
+    @keyframes drawCheck { to { stroke-dashoffset: 0; } }
+    .atile.done .atile-glyph { opacity: 0; transform: scale(0.55); }
+    .atile.done .atile-cap { color: #fff; }
+    .atile.done {
+      box-shadow: 0 0 0 1px rgba(var(--accent),0.95) inset, 0 0 24px -5px rgba(var(--accent),0.95);
+    }
+
+    /* ---- the app behind this tile is already open ---- */
+
+    .atile.live {
+      background:
+        radial-gradient(130% 100% at 50% 0%, rgba(var(--accent), 0.42) 0%, transparent 74%),
+        linear-gradient(168deg, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.035) 100%);
+      box-shadow:
+        0 0 0 1px rgba(var(--accent), 0.52) inset,
+        0 8px 22px -12px rgba(var(--accent), 1);
+    }
+    .atile.live .atile-glyph {
+      color: #fff;
+      background: linear-gradient(158deg, rgba(var(--accent), 1) 0%, rgba(var(--accent), 0.72) 100%);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.3) inset,
+        0 1px 0 rgba(255,255,255,0.4) inset,
+        0 0 16px -2px rgba(var(--accent), 0.95);
+    }
+    .atile.live .atile-cap { color: var(--ink); }
+
+    /* a slow pip, so "open" reads at a glance without shouting */
+    .atile-live {
+      position: absolute;
+      z-index: 4;
+      top: 9px;
+      inset-inline-end: 9px;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgb(var(--accent));
+      opacity: 0;
+      transform: scale(0.5);
+      transition: opacity 0.35s ease, transform 0.35s var(--ease);
+      pointer-events: none;
+    }
+    .atile.live .atile-live {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 8px 1px rgba(var(--accent), 0.9);
+      animation: livePip 2.6s ease-in-out infinite;
+    }
+    @keyframes livePip {
+      0%, 100% { opacity: 0.45; }
+      50%      { opacity: 1; }
+    }
+
+    /* tapping an open app raises its window: a lift, not a tick */
+    .atile.raised { animation: raiseUp 0.68s var(--ease); }
+    @keyframes raiseUp {
+      0%   { transform: translateY(0) scale(1); }
+      35%  { transform: translateY(-7px) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    .atile.failed { animation: tileShake 0.42s ease-in-out; }
+    @keyframes tileShake {
+      0%,100% { transform: translateX(0); }
+      22% { transform: translateX(-6px); }
+      55% { transform: translateX(5px); }
+      80% { transform: translateX(-2px); }
+    }
+
+    .tiles.collapsing .atile {
+      animation: collapseDown 0.62s var(--ease);
+      animation-delay: calc(var(--i, 0) * 35ms);
+    }
+    @keyframes collapseDown {
+      0%   { transform: none; opacity: 1; }
+      45%  { transform: translateY(30px) scale(0.78); opacity: 0.3; }
+      100% { transform: none; opacity: 1; }
+    }
+
+    .screen-flash {
+      position: absolute; inset: 0;
+      z-index: 55;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .screen-flash.fire { animation: shutter 0.52s ease-out; }
+    @keyframes shutter { 0% { opacity: 0; } 7% { opacity: 0.93; } 100% { opacity: 0; } }
+
+    .last-run {
+      margin-top: auto;
+      padding: 6px 2px 2px;
+      font-size: 9.5px;
+      font-weight: 500;
+      color: var(--ink-faint);
+      text-align: center;
+      min-height: 14px;
+    }
+    .last-run.hot { color: var(--ink-dim); }
+
+    .empty { text-align: center; font-size: 11px; color: var(--ink-faint); padding: 26px 10px; line-height: 1.6; }
+
+    /* ------------------------------------------------------------ swipe nav */
+
+    .swipe-nav { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ink-faint); }
+    .swipe-nav button {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--ink-dim);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      transition: background 0.2s ease;
+    }
+    .swipe-nav button:hover { background: rgba(255,255,255,0.12); }
+
+    /* --------------------------------------------------------------- console */
+
+    .console {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1 1 290px;
+      max-width: 360px;
+      min-width: 0;
+      padding-top: 4px;
+    }
+    .console h2 {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+    }
+    .note {
+      font-size: 11.5px;
+      line-height: 1.65;
+      color: var(--ink-dim);
+      background: rgba(255,159,10,0.07);
+      border: 1px solid rgba(255,159,10,0.22);
+      border-radius: 11px;
       padding: 10px 12px;
+    }
+    .cmd-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+    .cmd {
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 11px;
+      background: rgba(255,255,255,0.04);
+      color: var(--ink-dim);
+      font-family: inherit;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
-      text-align: right;
+      text-align: start;
+      transition: all 0.2s ease;
     }
-    .cmd-btn:hover {
-      border-color: #38bdf8;
-      background: #1e293b;
-      color: #38bdf8;
-    }
-    .custom-box {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-    .custom-input {
+    .cmd:hover { background: rgba(255,255,255,0.09); color: var(--ink); border-color: rgba(255,255,255,0.16); }
+
+    .composer { display: flex; gap: 7px; }
+    .composer input {
       flex: 1;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 10px 14px;
-      color: white;
-      font-size: 13px;
+      min-width: 0;
+      padding: 10px 13px;
+      border-radius: 11px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 12.5px;
       outline: none;
-      text-align: right;
     }
-    .custom-input:focus {
-      border-color: #38bdf8;
-    }
-    .send-btn {
-      background: #0284c7;
+    .composer input:focus { border-color: var(--blue); }
+    .composer button {
+      padding: 10px 17px;
+      border-radius: 11px;
       border: none;
-      color: white;
-      border-radius: 10px;
-      padding: 10px 18px;
-      font-weight: bold;
-      font-size: 13px;
+      background: var(--blue);
+      color: #fff;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
       cursor: pointer;
-      transition: 0.2s;
-    }
-    .send-btn:hover {
-      background: #0369a1;
     }
 
-    .log-box {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 12px;
-      font-family: monospace;
-      color: #34d399;
-      min-height: 42px;
-      display: flex;
-      align-items: center;
+    .log {
+      font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.75;
+      color: var(--ink-dim);
+      background: rgba(0,0,0,0.34);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 11px;
+      padding: 11px 13px;
+      min-height: 84px;
+      max-height: 200px;
+      overflow-y: auto;
+      direction: ltr;
+      text-align: left;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .log b { color: var(--green); font-weight: 600; }
+    .log i { color: var(--red); font-style: normal; }
+
+    /* ------------------------------------------------------------ responsive */
+
+    @media (max-width: 520px) {
+      body { padding: 0; background: #000; gap: 0; }
+      .masthead, .console, .swipe-nav, .crown, .side-btn, .watch-tag { display: none !important; }
+      .stage, .watches { gap: 0; }
+      .watches .watch:nth-child(2) { display: none; }
+      .chassis {
+        width: 100vw; height: 100vh;
+        border-radius: 0;
+        padding: 0;
+        background: #000;
+        box-shadow: none;
+      }
+      .screen {
+        width: 100vw; height: 100vh;
+        border-radius: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .screen::after { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <div class="header-bar">
-    <h1>Apple Watch Minimalist</h1>
-    <div class="ip-badge">{{CURRENT_IP}}:8000</div>
+  <div class="masthead">
+    <div>
+      <h1>PC Control · תצוגה מקדימה של השעון</h1>
+      <div class="sub">שני שעונים זהים. השמאלי מחובר למחשב באמת, הימני לא שולח כלום.</div>
+    </div>
+    <div class="endpoint">{{CURRENT_IP}}:8000</div>
   </div>
 
-  <div class="container">
-    
-    <!-- Apple Watch Frame Simulator (Zero Text Clutter) -->
-    <div class="watch-chassis" id="watchChassis">
-      <div class="watch-crown" id="watchCrown"></div>
-      
-      <div class="watch-screen state-idle" id="watchScreen">
-        
-        <!-- Clean Top Bar -->
-        <div class="top-bar">
-          <span id="watchTime">14:57</span>
-          <div class="vol-badge-group">
-            <span class="status-dot"></span>
-            <span class="vol-badge" id="screenVol">{{VOL}}%</span>
+  <!-- One watch, cloned per mount, so both run exactly the same code. -->
+  <template id="watchTemplate">
+    <div class="chassis">
+      <div class="crown"></div>
+      <div class="side-btn"></div>
+
+      <div class="screen state-idle">
+
+        <div class="topbar">
+          <div class="left">
+            <span class="dot js-dot"></span>
+            <span class="js-vol-badge">50%</span>
           </div>
+          <span class="time js-clock">--:--</span>
         </div>
 
-        <!-- The Pure Glowing Orb -->
-        <div class="orb-stage" onclick="triggerMic()">
-          <div class="orb-aura" id="orbAura"></div>
-          <div class="orb-sphere" id="orbSphere">
-            <div class="wave-bars" id="waveBars" style="display: none;">
-              <span class="wave-bar" style="animation-delay: 0s;"></span>
-              <span class="wave-bar" style="animation-delay: 0.2s;"></span>
-              <span class="wave-bar" style="animation-delay: 0.4s;"></span>
-              <span class="wave-bar" style="animation-delay: 0.1s;"></span>
-              <span class="wave-bar" style="animation-delay: 0.3s;"></span>
+        <div class="pages">
+
+          <section class="page">
+            <div class="page-title">קול</div>
+            <div class="orb-stage">
+              <div class="orb">
+                <div class="orb-aura"></div>
+                <canvas class="orb-canvas"></canvas>
+                <div class="orb-caption js-orb-caption"></div>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Clean Capsule Slider -->
-        <div class="slider-wrapper">
-          <div class="apple-slider-track" id="sliderTrack">
-            <div class="apple-slider-fill" id="sliderFill"></div>
-            <div class="slider-content">
-              <span class="slider-icon">🔈</span>
-              <span class="slider-pct" id="sliderPctText">{{VOL}}%</span>
-              <span class="slider-icon">🔊</span>
+            <div class="vol">
+              <div class="vol-track js-vol-track">
+                <div class="vol-fill js-vol-fill" style="width: 50%"></div>
+                <div class="vol-row">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/></svg>
+                  <span class="pct js-vol-pct">50%</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section class="page">
+            <div class="page-title">חשמל</div>
+            <div class="ptiles js-power"></div>
+          </section>
+
+          <section class="page">
+            <div class="page-title">מצב המחשב</div>
+            <div class="rings-wrap">
+              <svg class="rings" viewBox="0 0 120 120">
+                <g transform="rotate(-90 60 60)">
+                  <circle class="track" cx="60" cy="60" r="50" stroke-width="10"/>
+                  <circle class="track" cx="60" cy="60" r="37" stroke-width="10"/>
+                  <circle class="track" cx="60" cy="60" r="24" stroke-width="10"/>
+                  <circle class="val js-ring-cpu"  cx="60" cy="60" r="50" stroke-width="10" stroke="#0A84FF"/>
+                  <circle class="val js-ring-mem"  cx="60" cy="60" r="37" stroke-width="10" stroke="#BF5AF2"/>
+                  <circle class="val js-ring-disk" cx="60" cy="60" r="24" stroke-width="10" stroke="#30D158"/>
+                </g>
+              </svg>
+              <div class="legend">
+                <div class="legend-row">
+                  <span class="swatch" style="background:#0A84FF"></span>
+                  <span class="name">מעבד</span>
+                  <span class="num js-num-cpu">–</span>
+                </div>
+                <div class="legend-row">
+                  <span class="swatch" style="background:#BF5AF2"></span>
+                  <span class="name">זיכרון</span>
+                  <span class="note js-note-mem"></span>
+                  <span class="num js-num-mem">–</span>
+                </div>
+                <div class="legend-row">
+                  <span class="swatch" style="background:#30D158"></span>
+                  <span class="name">דיסק</span>
+                  <span class="note js-note-disk"></span>
+                  <span class="num js-num-disk">–</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="page">
+            <div class="page-title">כפתורים</div>
+            <div class="tiles js-tiles"></div>
+            <div class="last-run js-last-run"></div>
+          </section>
+
         </div>
 
+        <div class="screen-flash"></div>
+
+        <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
       </div>
     </div>
 
-    <!-- Side Control Panel -->
-    <div class="controls-panel">
-      <h2>🎛️ פקודות בדיקה מהירות</h2>
+    <div class="swipe-nav">
+      <button class="js-prev" title="הקודם">‹</button>
+      <span class="js-page-name">קול</span>
+      <button class="js-next" title="הבא">›</button>
+    </div>
+  </template>
 
-      <div class="test-grid">
-        <button class="cmd-btn" onclick="executeCmd('תנמיך ב-50 אחוז')">📉 תנמיך ב-50%</button>
-        <button class="cmd-btn" onclick="executeCmd('תנמיך ל-50 אחוז')">🎯 תנמיך ל-50%</button>
-        <button class="cmd-btn" onclick="executeCmd('תגביר ב-20 אחוז')">📈 תגביר ב-20%</button>
-        <button class="cmd-btn" onclick="executeCmd('תגביר ל-80 אחוז')">🎯 תגביר ל-80%</button>
-        <button class="cmd-btn" onclick="executeCmd('עד הסוף')">🔊 100%</button>
-        <button class="cmd-btn" onclick="executeCmd('תשתיק')">🔇 השתק</button>
+  <div class="stage">
+
+    <div class="watches">
+      <div class="watch" id="watchLive">
+        <div class="watch-tag live">חי · מחובר למחשב</div>
+      </div>
+      <div class="watch" id="watchDemo">
+        <div class="watch-tag demo">הדגמה · לא שולח כלום</div>
+      </div>
+    </div>
+
+    <div class="console">
+      <div class="note">
+        <strong>שעון ההדגמה בטוח לחלוטין.</strong><br>
+        תחזיק בו את הכיבוי עד הסוף כמה פעמים שבא לך — הוא מריץ את כל האנימציה, הספירה והרטט, ולא שולח למחשב שום דבר.
       </div>
 
-      <div class="custom-box">
-        <input type="text" id="customInput" class="custom-input" placeholder="פקודה בעברית..." onkeydown="if(event.key==='Enter') sendCustom()">
-        <button class="send-btn" onclick="sendCustom()">שלח</button>
+      <h2>בדיקת פקודות עברית</h2>
+      <div class="cmd-grid">
+        <button class="cmd" data-cmd="תנמיך ב-50 אחוז">תנמיך ב-50%</button>
+        <button class="cmd" data-cmd="תנמיך ל-50 אחוז">תנמיך ל-50%</button>
+        <button class="cmd" data-cmd="תגביר ב-20 אחוז">תגביר ב-20%</button>
+        <button class="cmd" data-cmd="תגביר ל-80 אחוז">תגביר ל-80%</button>
+        <button class="cmd" data-cmd="עד הסוף">מקסימום</button>
+        <button class="cmd" data-cmd="תשתיק">השתק</button>
       </div>
 
-      <div class="log-box" id="logBox">מוכן.</div>
+      <div class="composer">
+        <input type="text" id="composerInput" placeholder="פקודה חופשית בעברית…">
+        <button id="composerSend">שלח</button>
+      </div>
+
+      <h2>יומן</h2>
+      <div class="log" id="log">ready.</div>
     </div>
 
   </div>
 
+  <script src="/orb.js"></script>
+  <script src="/watch-ui.js"></script>
   <script>
-    let currentVol = parseInt("{{VOL}}") || 50;
-    let isDragging = false;
-    let debounceTimer = null;
+  (function () {
+    'use strict';
 
-    function updateTime() {
-      const d = new Date();
-      document.getElementById('watchTime').textContent = 
-        String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    }
-    updateTime();
-    setInterval(updateTime, 10000);
+    const logBox = document.getElementById('log');
 
-    function updateVolumeDisplay(vol) {
-      currentVol = Math.max(0, Math.min(100, Math.round(vol)));
-      document.getElementById('sliderFill').style.width = currentVol + '%';
-      document.getElementById('sliderPctText').textContent = currentVol + '%';
-      document.getElementById('screenVol').textContent = currentVol + '%';
+    function log(msg, kind) {
+      const tag = kind === 'ok' ? '<b>' + msg + '</b>'
+                : kind === 'err' ? '<i>' + msg + '</i>'
+                : msg;
+      const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+      logBox.innerHTML = time + '  ' + tag + '\n' + logBox.innerHTML;
     }
 
-    function syncVolumeToPC(target) {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
-        try {
-          const res = await fetch('/api/volume', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ volume: target })
+    const template = document.getElementById('watchTemplate');
+
+    function mount(id, live) {
+      const host = document.getElementById(id);
+      host.prepend(template.content.cloneNode(true));
+      return new WatchUI(host, { live: live, onLog: log });
+    }
+
+    const watches = [mount('watchLive', true), mount('watchDemo', false)];
+    const liveWatch = watches[0];
+
+    // Exposed for the console and the UI tests.
+    window.__watch = { live: watches[0], demo: watches[1], all: watches };
+    window.__orb = watches[0].orb;
+
+    let initialVolume = parseInt('{{VOL}}', 10);
+    if (isNaN(initialVolume)) initialVolume = 50;
+    watches.forEach(function (w) { w.paintVolume(initialVolume); });
+
+    // ------------------------------------------------------------ shared data
+
+    function loadOnce(url, apply, label) {
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (d) { watches.forEach(function (w) { apply(w, d); }); })
+        .catch(function () { log('could not load ' + label, 'err'); });
+    }
+
+    loadOnce('/api/power', function (w, d) { w.renderPower(d.actions || []); }, 'power actions');
+    fetch('/api/actions')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        watches.forEach(function (w) { w.renderActions(d.actions || []); });
+        pollActionStatuses();
+      })
+      .catch(function () { log('could not load actions', 'err'); });
+
+    function pollStatus() {
+      fetch('/api/status')
+        .then(function (r) { return r.json(); })
+        .then(function (s) {
+          watches.forEach(function (w) {
+            w.setConnected(true);
+            if (!w.dragging && typeof s.volume === 'number') w.paintVolume(s.volume);
           });
-          const data = await res.json();
-          document.getElementById('logBox').innerText = 'PC: ' + data.volume + '%';
-        } catch (e) {
-          console.error(e);
-        }
-      }, 40);
+        })
+        .catch(function () { watches.forEach(function (w) { w.setConnected(false); }); });
     }
 
-    // Slider Drag Logic
-    const track = document.getElementById('sliderTrack');
-    function handleSliderMove(e) {
-      const rect = track.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const pct = (clientX - rect.left) / rect.width;
-      const target = Math.max(0, Math.min(100, Math.round(pct * 100)));
-      updateVolumeDisplay(target);
-      syncVolumeToPC(target);
+    function pollStats() {
+      fetch('/api/stats')
+        .then(function (r) { return r.json(); })
+        .then(function (s) { watches.forEach(function (w) { w.renderStats(s); }); })
+        .catch(function () { /* the status poll already reports connectivity */ });
     }
 
-    track.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      handleSliderMove(e);
-    });
-    window.addEventListener('mousemove', (e) => {
-      if (isDragging) handleSliderMove(e);
-    });
-    window.addEventListener('mouseup', () => {
-      if (isDragging) isDragging = false;
-    });
+    function pollActionStatuses() {
+      fetch('/api/actions/status')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          watches.forEach(function (w) { w.setActionStatuses(d.statuses || {}); });
+        })
+        .catch(function () { /* the status poll already reports connectivity */ });
+    }
 
-    track.addEventListener('touchstart', (e) => {
-      isDragging = true;
-      handleSliderMove(e);
-    }, { passive: true });
-    window.addEventListener('touchmove', (e) => {
-      if (isDragging) handleSliderMove(e);
-    }, { passive: true });
-    window.addEventListener('touchend', () => {
-      isDragging = false;
+    pollStatus();
+    pollStats();
+    setInterval(pollStatus, 3000);
+    setInterval(pollStats, 2500);
+    // Apps open and close on a human timescale; polling harder buys nothing.
+    setInterval(pollActionStatuses, 4000);
+
+    // Idle orbs should not burn a core in a background tab.
+    document.addEventListener('visibilitychange', function () {
+      watches.forEach(function (w) {
+        if (document.hidden) w.orb.stop(); else w.orb.start();
+      });
     });
 
-    // Digital Crown Wheel
-    const watchChassis = document.getElementById('watchChassis');
-    const watchCrown = document.getElementById('watchCrown');
+    // --------------------------------------------------------------- console
 
-    watchChassis.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? 2 : -2;
-      const nextVol = Math.max(0, Math.min(100, currentVol + delta));
-      
-      watchCrown.classList.remove('crown-rotating');
-      void watchCrown.offsetWidth;
-      watchCrown.classList.add('crown-rotating');
+    Array.prototype.forEach.call(document.querySelectorAll('.cmd'), function (b) {
+      b.addEventListener('click', function () { liveWatch.runCommand(b.dataset.cmd); });
+    });
 
-      updateVolumeDisplay(nextVol);
-      syncVolumeToPC(nextVol);
-    }, { passive: false });
-
-    // State Transitions
-    function setWatchState(stateName) {
-      const screen = document.getElementById('watchScreen');
-      screen.className = 'watch-screen state-' + stateName;
-      const waves = document.getElementById('waveBars');
-      waves.style.display = (stateName === 'listening' || stateName === 'executing') ? 'flex' : 'none';
+    const composerInput = document.getElementById('composerInput');
+    function sendComposed() {
+      const v = composerInput.value.trim();
+      if (!v) return;
+      liveWatch.runCommand(v);
+      composerInput.value = '';
     }
+    document.getElementById('composerSend').addEventListener('click', sendComposed);
+    composerInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') sendComposed();
+    });
 
-    async function executeCmd(text) {
-      setWatchState('thinking');
-      document.getElementById('logBox').innerText = 'מבצע: "' + text + '"...';
+    document.addEventListener('keydown', function (e) {
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (e.key === 'ArrowLeft')  liveWatch.goToPage(liveWatch.currentPage() + 1);
+      if (e.key === 'ArrowRight') liveWatch.goToPage(liveWatch.currentPage() - 1);
+    });
 
-      try {
-        const res = await fetch('/api/command', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
-        });
-        const data = await res.json();
-        
-        if (data.status === 'success') {
-          setWatchState('success');
-          document.getElementById('logBox').innerText = '✓ ' + data.feedback;
-          
-          if (data.details && data.details.new_volume !== undefined) {
-            updateVolumeDisplay(data.details.new_volume);
-          }
-
-          setTimeout(() => {
-            setWatchState('idle');
-          }, 1800);
-
-        } else {
-          setWatchState('idle');
-          document.getElementById('logBox').innerText = '⚠ ' + data.feedback;
-        }
-      } catch (err) {
-        setWatchState('idle');
-        document.getElementById('logBox').innerText = 'שגיאה: ' + err.message;
-      }
-    }
-
-    function sendCustom() {
-      const val = document.getElementById('customInput').value.trim();
-      if (val) {
-        executeCmd(val);
-        document.getElementById('customInput').value = '';
-      }
-    }
-
-    function triggerMic() {
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRec();
-        recognition.lang = 'he-IL';
-        setWatchState('listening');
-        
-        recognition.onresult = function(event) {
-          const text = event.results[0][0].transcript;
-          document.getElementById('logBox').innerText = 'שמעתי: "' + text + '"';
-          executeCmd(text);
-        };
-        recognition.onerror = function() {
-          setWatchState('idle');
-        };
-        recognition.start();
-      } else {
-        const text = prompt('דבר אל השעון:', 'תנמיך ב-50 אחוז');
-        if (text) executeCmd(text);
-      }
-    }
+    log('ready — two watches mounted', 'ok');
+  })();
   </script>
 </body>
 </html>

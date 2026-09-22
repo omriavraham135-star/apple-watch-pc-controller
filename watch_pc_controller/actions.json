@@ -1,0 +1,42 @@
+[
+  {
+    "id": "screenshot",
+    "label": "צילום מסך",
+    "icon": "camera.viewfinder",
+    "command": "explorer ms-screenclip:"
+  },
+  {
+    "id": "minimize-all",
+    "label": "מזעור הכל",
+    "icon": "rectangle.3.group",
+    "command": "powershell -NoProfile -Command \"(New-Object -ComObject Shell.Application).MinimizeAll()\""
+  },
+  {
+    "id": "chrome",
+    "label": "Chrome",
+    "icon": "globe",
+    "command": "start chrome",
+    "process": "chrome.exe"
+  },
+  {
+    "id": "explorer",
+    "label": "סייר הקבצים",
+    "icon": "folder",
+    "command": "start explorer",
+    "process": "explorer.exe"
+  },
+  {
+    "id": "taskmgr",
+    "label": "מנהל המשימות",
+    "icon": "chart.bar",
+    "command": "start taskmgr",
+    "process": "Taskmgr.exe"
+  },
+  {
+    "id": "settings",
+    "label": "הגדרות",
+    "icon": "gearshape",
+    "command": "start ms-settings:",
+    "process": "SystemSettings.exe"
+  }
+]

@@ -2,3 +2,4 @@ pycaw>=20251023
 comtypes>=1.4.16
 fastapi>=0.111.0
 uvicorn>=0.30.0
+psutil>=7.0.0

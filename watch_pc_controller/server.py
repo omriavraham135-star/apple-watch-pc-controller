@@ -1,14 +1,18 @@
 import os
 import socket
-from fastapi import FastAPI
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
-from watch_pc_controller.volume_controller import VolumeController
+from watch_pc_controller.actions import ActionRegistry, UnknownActionError
 from watch_pc_controller.nlp_parser import parse_voice_command
+from watch_pc_controller.power_controller import PowerController, UnknownPowerActionError
+from watch_pc_controller.system_stats import get_stats
+from watch_pc_controller.volume_controller import VolumeController
 
-app = FastAPI(title="Apple Watch PC Controller API", version="1.0.0")
+app = FastAPI(title="Apple Watch PC Controller API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +23,9 @@ app.add_middleware(
 )
 
 volume_ctrl = VolumeController()
+power_ctrl = PowerController()
+action_registry = ActionRegistry()
+
 
 def get_local_ip() -> str:
     try:
@@ -30,11 +37,22 @@ def get_local_ip() -> str:
     except Exception:
         return "127.0.0.1"
 
+
 class VoiceCommandRequest(BaseModel):
     text: str
 
+
 class DirectVolumeRequest(BaseModel):
     volume: int
+
+
+class PowerRequest(BaseModel):
+    action: str
+
+
+# --------------------------------------------------------------------------
+# Status and volume
+# --------------------------------------------------------------------------
 
 @app.get("/api/status")
 def get_status():
@@ -44,6 +62,7 @@ def get_status():
         "is_muted": volume_ctrl.is_muted(),
         "local_ip": get_local_ip()
     }
+
 
 @app.post("/api/volume")
 def set_volume_direct(req: DirectVolumeRequest):
@@ -55,11 +74,12 @@ def set_volume_direct(req: DirectVolumeRequest):
         "details": res
     }
 
+
 @app.post("/api/command")
 def process_command(req: VoiceCommandRequest):
     parsed = parse_voice_command(req.text)
     intent = parsed.get("intent")
-    
+
     if intent == "change_relative":
         res = volume_ctrl.change_volume(parsed["delta"])
         return {
@@ -92,6 +112,89 @@ def process_command(req: VoiceCommandRequest):
             "current_volume": volume_ctrl.get_volume()
         }
 
+
+# --------------------------------------------------------------------------
+# Power
+# --------------------------------------------------------------------------
+
+@app.get("/api/power")
+def list_power_actions():
+    """Which power buttons to draw, and which of them need press-and-hold."""
+    return {"actions": power_ctrl.describe()}
+
+
+@app.post("/api/power")
+def run_power_action(req: PowerRequest):
+    try:
+        res = power_ctrl.execute(req.action)
+    except UnknownPowerActionError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return {"status": "success", "details": res}
+
+
+# --------------------------------------------------------------------------
+# Machine vitals
+# --------------------------------------------------------------------------
+
+@app.get("/api/stats")
+def read_stats():
+    return get_stats()
+
+
+# --------------------------------------------------------------------------
+# User-defined actions
+# --------------------------------------------------------------------------
+
+@app.get("/api/actions")
+def list_actions():
+    return {"actions": action_registry.list_actions()}
+
+
+@app.get("/api/actions/status")
+def action_statuses():
+    """Which action's app is open right now. Polled, so it stays cheap."""
+    return {"statuses": action_registry.statuses()}
+
+
+@app.post("/api/actions/reload")
+def reload_actions():
+    """Pick up edits to actions.json without restarting the server."""
+    action_registry.reload()
+    return {"status": "success", "actions": action_registry.list_actions()}
+
+
+@app.post("/api/actions/{action_id}")
+def run_action(action_id: str):
+    try:
+        res = action_registry.run(action_id)
+    except UnknownActionError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return {"status": "success", "details": res}
+
+
+# --------------------------------------------------------------------------
+# Dashboard
+# --------------------------------------------------------------------------
+
+def _serve_script(name: str) -> Response:
+    """Serve a dashboard module by a fixed name — no path ever comes from a request."""
+    path = os.path.join(os.path.dirname(__file__), name)
+    with open(path, "r", encoding="utf-8") as f:
+        return Response(content=f.read(), media_type="application/javascript")
+
+
+@app.get("/orb.js")
+def orb_script():
+    """The particle orb renderer."""
+    return _serve_script("orb.js")
+
+
+@app.get("/watch-ui.js")
+def watch_ui_script():
+    """The watch interface, instantiated once per watch on the page."""
+    return _serve_script("watch-ui.js")
+
+
 @app.get("/", response_class=HTMLResponse)
 def test_dashboard():
     html_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
@@ -107,6 +210,7 @@ def test_dashboard():
     html = html.replace("{{MUTED}}", muted)
 
     return HTMLResponse(content=html)
+
 
 if __name__ == "__main__":
     import uvicorn
