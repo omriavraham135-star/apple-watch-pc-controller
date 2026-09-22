@@ -28,7 +28,7 @@ fi
 
 section "Advertised on the network (8 seconds each)"
 for svc in _remotepairing._tcp _remotepairing-manual-pairing._tcp _apple-mobdev2._tcp; do
-  print "-- $svc"
+  print -r -- "-- $svc"
   dns-sd -B $svc local. > /tmp/dnssd.$$ 2>&1 &
   pid=$!
   sleep 8
