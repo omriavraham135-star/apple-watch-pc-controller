@@ -210,13 +210,14 @@ struct PowerPage: View {
                                 TileChrome(accent: accent)
                                 PowerTileFace(label: action.label, glyph: glyph, accent: accent)
                             }
-                            .aspectRatio(1, contentMode: .fit)
+                            .aspectRatio(TileMetrics.aspect, contentMode: .fit)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
             .padding(.horizontal, 2)
+            .padding(.bottom, TileMetrics.pageBottomInset)
         }
     }
 }
@@ -320,6 +321,7 @@ struct ActionsPage: View {
                     }
                 }
                 .padding(.horizontal, 2)
+                .padding(.bottom, TileMetrics.pageBottomInset)
             }
         }
     }
@@ -363,7 +365,7 @@ struct ActionsPage: View {
                         .padding(8)
                 }
             }
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(TileMetrics.aspect, contentMode: .fit)
             .offset(y: raised.contains(shortcut.id) ? -6 : 0)
             .animation(.spring(response: 0.35, dampingFraction: 0.55), value: raised)
         }

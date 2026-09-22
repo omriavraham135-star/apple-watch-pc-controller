@@ -36,6 +36,20 @@ struct TileOutline: Shape {
     }
 }
 
+/// Shared tile geometry.
+///
+/// Square tiles ran two rows past the bottom of a 41mm screen: measured on a
+/// simulator capture, the power and shortcut pages filled every row of pixels
+/// to the last one, clipping the second row and hiding the page dots beneath
+/// it. Slightly wider than tall, both rows fit with the indicator clear.
+enum TileMetrics {
+    /// width ÷ height
+    static let aspect: CGFloat = 1.14
+    static let corner: CGFloat = 18
+    /// Clearance for the page indicator at the bottom of a scrolling page.
+    static let pageBottomInset: CGFloat = 14
+}
+
 /// A tile that only fires after a deliberate press and hold.
 ///
 /// This is a touchscreen strapped to a wrist. A stray brush against shutdown
@@ -56,7 +70,7 @@ struct HoldToConfirm<Content: View>: View {
     @State private var justCommitted = false
     @State private var driver: Task<Void, Never>?
 
-    private let corner: CGFloat = 18
+    private let corner: CGFloat = TileMetrics.corner
 
     var body: some View {
         ZStack {
@@ -93,7 +107,7 @@ struct HoldToConfirm<Content: View>: View {
                     .shadow(color: .black.opacity(0.5), radius: 4)
             }
         }
-        .aspectRatio(1, contentMode: .fit)
+        .aspectRatio(TileMetrics.aspect, contentMode: .fit)
         .contentShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
         .scaleEffect(isHolding ? 0.97 : 1)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isHolding)
@@ -206,9 +220,9 @@ struct TileGlyph: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.system(size: 17, weight: .medium))
+            .font(.system(size: 16, weight: .medium))
             .foregroundStyle(filled ? Color.white : accent)
-            .frame(width: 36, height: 36)
+            .frame(width: 33, height: 33)
             .background {
                 Circle()
                     .fill(
