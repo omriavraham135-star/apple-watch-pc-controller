@@ -102,8 +102,14 @@ sign identifiers no other developer has registered; the generic
 - Reset Location & Privacy on the iPhone and re-trusted, so the pairing that
   is supposed to discover the watch would run again with Bluetooth present.
 - `tools/vm/watch-diagnose.zsh` reports each layer; it changes nothing.
-- Untested suspects: the Mac is not signed into iCloud; the watch (SE, 2.4GHz)
-  and the PC (5GHz) are on different bands of a mesh network.
+- **Two routers.** The PC had been on `Mordipeleg` (192.168.68.x) while the
+  iPhone and watch were on `Mordi` (192.168.1.x), two separate networks. The
+  PC was moved to `Mordi`, and the Mac then saw the iPhone's `_remotepairing`
+  advertisement. The watch still advertised nothing.
+- Signed the Mac into iCloud with the same Apple ID and turned Handoff on
+  (the log had shown `Companion link state: Host Count 0`). Still no watch.
+- **Stopped here, as agreed with the user:** the free route is abandoned
+  unless something new turns up.
 - Apple acknowledges a watch-connection regression in Xcode 26.2+ that hits
   real Macs too (forum thread 813066). No report found of anyone deploying to a
   watch from a macOS VM.
