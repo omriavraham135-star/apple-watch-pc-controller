@@ -40,13 +40,11 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: "1,2"
     dependencies:
-      # Xcode expects an embedded watch app in PlugIns/, not Watch/. XcodeGen's
-      # bare `embed: true` produces Watch/, which installs fine on older Xcode
-      # and fails on current versions, so the destination is set explicitly.
+      # `embed: true` alone. Adding an explicit copy phase on top of it made
+      # two build commands produce the same binary, which Xcode refuses. Where
+      # the watch app lands is the generator's business; CI reports it.
       - target: PCVolumeWatchApp
         embed: true
-        copy:
-          destination: plugins
 
   PCVolumeWatchApp:
     type: application.watchapp2

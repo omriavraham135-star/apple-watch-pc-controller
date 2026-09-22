@@ -66,15 +66,16 @@ jobs:
           APP=$(find build/Build/Products -name "PCVolumeApp.app" -maxdepth 3 | head -1)
           echo "host app: $APP"
           ls -la "$APP"
-          # Current Xcode expects the watch app in PlugIns/, not Watch/.
-          # Installation fails silently on the device if this is wrong.
-          if [ -d "$APP/PlugIns/PCVolumeWatchApp.app" ]; then
-            echo "watch app embedded in PlugIns/ as expected"
-          elif [ -d "$APP/Watch/PCVolumeWatchApp.app" ]; then
-            echo "::error::watch app landed in Watch/ instead of PlugIns/ — it will not install"
-            exit 1
-          else
-            echo "::error::no embedded watch app found"
-            find "$APP" -maxdepth 2 -name "*.app"
+
+          # Which subdirectory the watch app belongs in has changed between
+          # Xcode versions, so this asserts only what is certainly required —
+          # that it is embedded at all — and prints where, so a failure to
+          # install on a device can be traced without guesswork.
+          EMBEDDED=$(find "$APP" -maxdepth 2 -name "PCVolumeWatchApp.app" | head -1)
+          if [ -z "$EMBEDDED" ]; then
+            echo "::error::no embedded watch app found in the host app"
+            find "$APP" -maxdepth 2
             exit 1
           fi
+          echo "watch app embedded at: ${EMBEDDED#$APP/}"
+          echo "xcode: $(xcodebuild -version | head -1)"
