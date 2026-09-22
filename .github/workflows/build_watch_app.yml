@@ -86,3 +86,97 @@ jobs:
           fi
           echo "watch app embedded at: ${EMBEDDED#$APP/}"
           echo "xcode: $(xcodebuild -version | head -1)"
+
+  # Compiling proves the code is valid. It does not prove the app draws
+  # anything sensible, so this runs it on a watch simulator against a stand-in
+  # PC and captures every page.
+  screenshots:
+    runs-on: macos-15
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: watch_pc_controller
+        run: xcodegen generate
+
+      - name: Start the stand-in PC
+        run: |
+          # The real server needs pycaw and Windows audio, so it cannot run
+          # here. This serves the same shapes so the pages render populated.
+          python3 tests/mock_server.py --port 8000 &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8000/api/status > /dev/null && break
+            sleep 0.5
+          done
+          curl -s http://127.0.0.1:8000/api/status
+
+      - name: Build for the watch simulator
+        working-directory: watch_pc_controller
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project PCVolumeWatch.xcodeproj \
+            -scheme PCVolumeWatchApp \
+            -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Boot a watch
+        id: sim
+        run: |
+          # First available watchOS device. Plain text parsing keeps this a
+          # single shell block, and a literal UDID match avoids backreferences,
+          # which do not survive being nested in YAML.
+          UDID=$(xcrun simctl list devices available \
+            | awk '/-- watchOS/{w=1; next} /^-- /{w=0} w' \
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}' \
+            | head -1)
+          if [ -z "$UDID" ]; then echo '::error::no watch simulator available'; exit 1; fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl list devices | grep "$UDID"
+
+      - name: Install and point it at the stand-in PC
+        working-directory: watch_pc_controller
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          APP=$(find build/Build/Products -name "PCVolumeWatchApp.app" -path "*watchsimulator*" | head -1)
+          echo "installing $APP"
+          xcrun simctl install "$UDID" "$APP"
+
+          # An RFC1918 address rather than loopback: the app's ATS exception is
+          # NSAllowsLocalNetworking, which covers private ranges.
+          HOST=$(ipconfig getifaddr en0 || echo 127.0.0.1)
+          echo "pointing the watch at $HOST"
+          xcrun simctl spawn "$UDID" defaults write com.personal.pcvolume.watchkitapp pc_ip_address "$HOST"
+
+      - name: Capture every page
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          mkdir -p shots
+          NAMES=(voice power stats actions)
+          for i in 0 1 2 3; do
+            xcrun simctl terminate "$UDID" com.personal.pcvolume.watchkitapp 2>/dev/null || true
+            sleep 1
+            xcrun simctl launch "$UDID" com.personal.pcvolume.watchkitapp -startPage "$i"
+            # give the page time to fetch and settle
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "shots/${i}-${NAMES[$i]}.png"
+            echo "captured ${NAMES[$i]}"
+          done
+          ls -la shots
+
+      - name: Upload the screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-screens
+          path: shots/*.png
+          retention-days: 14

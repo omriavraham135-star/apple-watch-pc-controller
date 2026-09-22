@@ -66,3 +66,13 @@ targets:
         NSLocalNetworkUsageDescription: "חיבור למחשב שלך ברשת הביתית"
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+
+schemes:
+  # The watch app alone, so it can be built for the simulator and run there
+  # without dragging the iOS host along.
+  PCVolumeWatchApp:
+    build:
+      targets:
+        PCVolumeWatchApp: all
+    run:
+      config: Debug

@@ -85,8 +85,20 @@ struct PCVolumeWatchApp: App {
 struct RootView: View {
     @Bindable var pc: PCClient
 
-    @State private var page = 0
+    @State private var page = RootView.requestedStartPage
     @State private var orbState: OrbState = .idle
+
+    /// Lets the screenshot job open one page directly. The argument is absent
+    /// in normal use, so this is zero behaviour change on a real watch.
+    static var requestedStartPage: Int {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-startPage"),
+              i + 1 < args.count,
+              let page = Int(args[i + 1]),
+              (0...3).contains(page)
+        else { return 0 }
+        return page
+    }
 
     var body: some View {
         NavigationStack {
