@@ -16,7 +16,11 @@ settings:
 packages:
   Orb:
     url: https://github.com/metasidd/Orb.git
-    from: 1.0.0
+    # Pinned to the commit behind tag 0.2. The package's README suggests
+    # `from: 1.0.0`, but its only tags are 0.1 and 0.2, so that resolves to
+    # nothing. Pinning by revision also means the exact source that was read
+    # before taking this dependency is the source that builds.
+    revision: 8c5dda85e55638893f37657b56558968c3e11409
 
 targets:
 
