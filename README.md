@@ -19,6 +19,12 @@
 > ```
 > system_profiler SPBluetoothDataType | head -20
 > ```
+>
+> **אבחון השעון** (לא משנה כלום, רק מדווח):
+>
+> ```
+> cd ~/apple-watch-pc-controller && git pull && zsh tools/vm/watch-diagnose.zsh
+> ```
 
 שליטה במחשב Windows מה‑Apple Watch: ווליום בפקודות קוליות בעברית, נעילה וכיבוי, מצב המחשב, וכפתורי קיצור שאתה מגדיר.
 
