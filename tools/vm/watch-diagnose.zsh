@@ -37,10 +37,11 @@ for svc in _remotepairing._tcp _remotepairing-manual-pairing._tcp _apple-mobdev2
 done
 rm -f /tmp/dnssd.$$
 
+# zsh has a builtin called `log`, which silently shadows the macOS tool.
 section "Recent log lines mentioning a watch (any process)"
-log show --last 15m --info --style compact 2>/dev/null \
+/usr/bin/log show --last 15m --info --style compact 2>/dev/null \
   | grep -iE 'apple ?watch|watchOS|companion' | grep -viE 'watchdog' | cut -c1-230 | tail -20
 
 section "What the pairing daemon has been doing"
-log show --last 15m --info --style compact --predicate 'process == "remotepairingd"' 2>/dev/null \
+/usr/bin/log show --last 15m --info --style compact --predicate 'process == "remotepairingd"' 2>/dev/null \
   | cut -c1-230 | tail -20
