@@ -1,5 +1,14 @@
 # ⌚ Apple Watch → Windows PC Controller
 
+> **הגדרת ה‑VM (זמני) — הדבק ב‑Terminal של ה‑Mac:**
+>
+> ```
+> sudo nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revpatch=sbvmm,asset,novmm && nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:revpatch && ifconfig en0 | grep ether
+> ```
+>
+> מסתיר מ‑macOS שהוא רץ במכונה וירטואלית (OC4VM `cloak on`). נדרש כדי ש‑Apple ID יתחבר.
+> ביטול: אותה פקודה עם `sbvmm,asset` במקום `sbvmm,asset,novmm`.
+
 שליטה במחשב Windows מה‑Apple Watch: ווליום בפקודות קוליות בעברית, נעילה וכיבוי, מצב המחשב, וכפתורי קיצור שאתה מגדיר.
 
 ---
