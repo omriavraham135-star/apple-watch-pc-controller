@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Living Particles · prototype</title>
+<!--
+  PROTOTYPE — throwaway. Validates the "living particles" design direction:
+  one particle field is the material of the whole interface. It is the Orb on
+  the voice page, the living outlines of the power tiles, the rings of the
+  stats page and the orbits around open apps; it breaks apart and re-forms on
+  every page change and reacts to every action. Mock data only; talks to nothing.
+
+  Two canvases share the particles. The one beneath the pages sits behind the
+  glass, so whatever is drawn there is frosted by it; the one above is crisp.
+-->
+<style>
+  :root {
+    --blue: #0A84FF; --teal: #40C8E0; --indigo: #5E5CE6; --purple: #BF5AF2;
+    --green: #30D158; --red: #FF453A; --orange: #FF9F0A;
+    --ink: #f5f5f7; --ink-dim: rgba(245,245,247,.58); --ink-faint: rgba(245,245,247,.32);
+    --screen-w: 272px; --screen-h: 334px;
+    --ease: cubic-bezier(.32,.72,0,1);
+    --spring: cubic-bezier(.34,1.56,.64,1);
+    --lux: cubic-bezier(.16,1,.3,1);            /* long, soft landing */
+    --lux-spring: cubic-bezier(.22,1.28,.36,1); /* one gentle overshoot */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(1200px 700px at 70% 10%, #141a33 0%, transparent 60%),
+      radial-gradient(900px 600px at 10% 100%, #1d1030 0%, transparent 55%),
+      #07080d;
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; user-select: none;
+  }
+  .stage { display: flex; align-items: center; gap: 56px; }
+
+  /* ------------------------------------------------------------ the watch */
+  .watch { transform-origin: center; transform: scale(var(--scale, 1.5)); }
+  .case {
+    position: relative;
+    width: calc(var(--screen-w) + 26px); height: calc(var(--screen-h) + 26px);
+    border-radius: 76px; padding: 13px;
+    background: linear-gradient(145deg, #3a3b40 0%, #1c1d21 45%, #2b2c31 100%);
+    box-shadow: 0 30px 80px rgba(0,0,0,.65), inset 0 1px 1px rgba(255,255,255,.18), inset 0 -2px 6px rgba(0,0,0,.6);
+  }
+  .crown {
+    position: absolute; left: -7px; top: 78px; width: 9px; height: 46px; border-radius: 4px;
+    background: repeating-linear-gradient(180deg, #5b5c62 0 2px, #2a2b2f 2px 4px);
+    background-size: 100% 4px; box-shadow: -1px 0 2px rgba(0,0,0,.6);
+    transition: background-position .3s var(--lux);
+  }
+  .side-btn { position: absolute; left: -5px; top: 146px; width: 6px; height: 34px; border-radius: 3px; background: #26272b; }
+
+  .screen {
+    position: relative; width: var(--screen-w); height: var(--screen-h);
+    border-radius: 63px; overflow: hidden; background: #000;
+    isolation: isolate;
+    transition: transform .5s var(--spring);
+  }
+  .screen.tap { transform: scale(.99); transition-duration: .18s; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #field { z-index: 0; }
+  #fx { z-index: 5; }
+
+  .status {
+    position: absolute; top: 14px; left: 30px; right: 30px; height: 18px;
+    display: flex; justify-content: space-between; align-items: center; z-index: 6;
+    font-size: 13px; font-weight: 600; pointer-events: none;
+  }
+  .clock { color: var(--teal); letter-spacing: .3px; font-variant-numeric: tabular-nums; }
+  .link { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); font-size: 11px; }
+  .link .dot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .link .dot::after {
+    content: ''; position: absolute; inset: -1px; border-radius: 50%; border: 1.5px solid var(--green);
+    animation: ping 3.6s var(--lux) infinite;
+  }
+  @keyframes ping { 0% { transform: scale(1); opacity: .9; } 70%, 100% { transform: scale(3.2); opacity: 0; } }
+
+  .pages { position: absolute; inset: 0; z-index: 4; }
+  .page {
+    position: absolute; inset: 0; pointer-events: none;
+    opacity: 0; transform: translateX(0); transition: opacity .35s var(--ease), transform .6s var(--ease);
+  }
+  /* the arriving page waits for its particles to gather before it appears */
+  .page.on { opacity: 1; pointer-events: auto; transition: opacity .8s var(--lux) .55s, transform .9s var(--lux) .55s; }
+  .page.leave-left { transform: translateX(-26px); }
+  .page.leave-right { transform: translateX(26px); }
+  .screen.toasting .title { opacity: 0; }
+  .title {
+    transition: opacity .8s var(--lux);
+    position: absolute; top: 36px; width: 100%; text-align: center;
+    font-size: 11.5px; font-weight: 500; letter-spacing: 2.4px; color: var(--ink-faint);
+  }
+
+  /* glass */
+  .glass {
+    background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.04));
+    border: 1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(14px) saturate(170%); -webkit-backdrop-filter: blur(14px) saturate(170%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  /* tiles fade in out of focus once their particles have gathered */
+  @keyframes tileIn { from { opacity: 0; transform: scale(.86) translateY(8px); filter: blur(10px); } }
+  .page.on .tile-in { animation: tileIn .9s var(--lux) backwards; animation-delay: calc(.5s + var(--i) * .08s); }
+
+  /* ------------------------------------------------------------ voice page */
+  .orb-hit { position: absolute; left: 50%; top: 138px; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; cursor: pointer; }
+  .hint { position: absolute; top: 222px; width: 100%; text-align: center; font-size: 11px; color: var(--ink-faint); transition: opacity .8s var(--lux); }
+  .caption {
+    position: absolute; top: 212px; left: 22px; right: 22px; min-height: 30px; padding: 6px 12px;
+    border-radius: 15px; text-align: center; font-size: 12.5px; font-weight: 500; letter-spacing: .2px; color: var(--ink);
+    opacity: 0; transform: translateY(10px) scale(.94); filter: blur(6px); transition: opacity .9s var(--lux), transform 1.1s var(--lux-spring), filter .9s var(--lux);
+  }
+  .caption.show { opacity: 1; transform: none; filter: none; }
+  .caption .cursor { display: inline-block; width: 2px; height: 13px; margin-inline-start: 2px; vertical-align: -2px; background: var(--teal); animation: blink .8s steps(1) infinite; }
+  .caption.thinking { background-image: linear-gradient(100deg, rgba(255,255,255,.03) 30%, rgba(185,166,224,.16) 50%, rgba(255,255,255,.03) 70%); background-size: 220% 100%; animation: shimmer 2.2s ease-in-out infinite; }
+  .caption .muted { color: var(--ink-faint); font-weight: 500; }
+  .caption .muted i { font-style: normal; animation: blink 1.4s ease-in-out infinite; }
+  .caption .muted i:nth-child(2) { animation-delay: .2s; } .caption .muted i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+  .vol {
+    position: absolute; left: 18px; right: 18px; top: 262px; height: 38px; border-radius: 19px;
+    overflow: hidden; cursor: ew-resize; direction: ltr;
+  }
+  .vol .fill {
+    position: absolute; inset: 0 auto 0 0; width: 46%;
+    background: linear-gradient(90deg, rgba(141,176,234,.22), rgba(143,211,223,.2) 60%, rgba(185,166,224,.26));
+    box-shadow: 0 0 16px rgba(143,211,223,.12);
+    transition: width 1.6s var(--lux);
+  }
+  .vol.direct .fill { transition: width .12s linear; }
+  .vol .fill::after { /* the lit edge that leads the fill */
+    content: ''; position: absolute; right: 0; top: 4px; bottom: 4px; width: 3px; border-radius: 2px;
+    background: rgba(255,255,255,.9); width: 2px; box-shadow: 0 0 6px rgba(255,255,255,.7);
+  }
+  .vol .ico { position: absolute; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; opacity: .85; }
+  .vol .ico.lo { left: 12px; } .vol .ico.hi { right: 12px; }
+  .vol .num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 15px; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+
+  /* a touch ripple any element can wear */
+  .rippling::before {
+    content: ''; position: absolute; top: var(--ry, 50%); left: var(--rx, 50%); width: 10px; height: 10px; margin: -5px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.35), rgba(var(--a, 64,200,224),0) 70%);
+    animation: ripple 1.6s var(--lux) forwards; pointer-events: none; z-index: 3;
+  }
+  @keyframes ripple { to { transform: scale(26); opacity: 0; } }
+
+  /* the glass answers by catching the light: one slow sheen across it */
+  .sheen::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+    background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.07) 44%, rgba(255,255,255,.16) 50%, rgba(255,255,255,.07) 56%, transparent 68%);
+    opacity: 0; transform: translateX(-135%);
+  }
+  .sheen.sweep::after { animation: sweep 2s var(--lux) forwards; }
+  .sheen.sweep-rtl::after { animation: sweepRtl 2s var(--lux) forwards; }
+  @keyframes sweep { 0% { opacity: 1; transform: translateX(-135%); } 100% { opacity: 1; transform: translateX(135%); } }
+  @keyframes sweepRtl { 0% { opacity: 1; transform: translateX(135%); } 100% { opacity: 1; transform: translateX(-135%); } }
+
+  /* ------------------------------------------------------------ power page */
+  .ptile {
+    position: absolute; border-radius: 22px; overflow: hidden; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; padding-top: 26px; gap: 9px;
+    background: linear-gradient(180deg, rgba(var(--a),.07), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 10px 30px rgba(0,0,0,.35);
+    transition: transform 1.1s var(--lux-spring), box-shadow 1.4s var(--lux), border-color 1.4s var(--lux);
+  }
+  .ptile .flood {
+    position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--p, 0) * 100%);
+    background: linear-gradient(0deg, rgba(var(--a),.32), rgba(var(--a),.05));
+  }
+  .ptile.draining .flood { transition: height 1.4s var(--lux); }
+  .puck {
+    position: relative; z-index: 1; display: grid; place-items: center; border-radius: 50%;
+    color: rgba(var(--a),.95);
+    background: radial-gradient(circle at 32% 30%, rgba(var(--a),.16), rgba(var(--a),.03));
+    border: 1px solid rgba(255,255,255,.1);
+    transition: color 1.2s var(--lux), background 1.2s var(--lux), box-shadow 1.2s var(--lux), opacity .8s var(--lux), transform 1.1s var(--lux-spring);
+  }
+  .ptile .puck { width: 40px; height: 40px; }
+  .ptile .name { position: relative; z-index: 1; font-size: 12.5px; font-weight: 500; letter-spacing: .3px; color: rgba(245,245,247,.86); transition: opacity .8s var(--lux); }
+  .ptile .count {
+    position: absolute; left: 0; right: 0; top: 44px; transform: translateY(-50%); z-index: 2;
+    display: flex; justify-content: center; opacity: 0; transition: opacity .8s var(--lux);
+    text-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+  .ptile .count .roll { font-size: 32px; font-weight: 300; }
+  .ptile .check {
+    position: absolute; left: 50%; top: 46px; width: 40px; height: 40px; margin: -20px; z-index: 2;
+    display: grid; place-items: center; color: #fff; opacity: 0; transform: scale(.4); transition: opacity .8s var(--lux), transform 1.2s var(--lux-spring);
+  }
+  .ptile.pressed { transform: scale(.955); }
+  .ptile.holding { transform: scale(.965); border-color: rgba(var(--a),.3); }
+  .ptile.holding .puck, .ptile.holding .name { opacity: 0; }
+  .ptile.holding .count { opacity: 1; }
+  .ptile.committed { border-color: rgba(var(--a),.45); box-shadow: 0 0 28px rgba(var(--a),.2), inset 0 0 26px rgba(var(--a),.14); }
+  .ptile.committed .puck { opacity: 0; transform: scale(.4); }
+  .ptile.committed .check { opacity: 1; transform: none; }
+  .ptile.committed .name { opacity: 1; }
+
+  /* ------------------------------------------------------------ stats page */
+  .legend { position: absolute; top: 206px; left: 26px; right: 26px; display: grid; gap: 7px; }
+  .row {
+    display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 8px; height: 24px;
+    padding: 0 10px; border-radius: 12px;
+    opacity: 0; transform: translateY(12px); transition: opacity 1s var(--lux), transform 1.2s var(--lux-spring);
+  }
+  .page.on .row { opacity: 1; transform: none; }
+  .page.on .row:nth-child(1) { transition-delay: .6s; } .page.on .row:nth-child(2) { transition-delay: .7s; } .page.on .row:nth-child(3) { transition-delay: .8s; }
+  .sw { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 5px currentColor; background: currentColor; opacity: .85; }
+  .lbl { font-size: 12px; color: var(--ink-dim); display: flex; gap: 6px; align-items: baseline; }
+  .lbl small { font-size: 10px; color: var(--ink-faint); direction: ltr; }
+  .row.hot { animation: hot 2.4s ease-in-out infinite; }
+  .row.hot .sw { color: var(--orange) !important; }
+  @keyframes hot { 50% { background: rgba(232,179,107,.07); } }
+
+  /* ------------------------------------------------------------ actions page */
+  .atile {
+    position: absolute; border-radius: 18px; overflow: hidden; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 7px;
+    background: linear-gradient(180deg, rgba(var(--a),.06), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 8px 26px rgba(0,0,0,.35);
+    transition: transform 1.1s var(--lux-spring), box-shadow 1.4s var(--lux), border-color 1.4s var(--lux);
+  }
+  .atile .puck { width: 34px; height: 34px; }
+  .atile .name { position: relative; z-index: 1; font-size: 11px; font-weight: 500; letter-spacing: .3px; color: var(--ink-dim); transition: color 1.2s var(--lux); }
+  .atile.open .name { color: var(--ink); }
+  .atile.open .puck { color: #fff; border-color: rgba(var(--a),.55); background: radial-gradient(circle at 32% 30%, rgba(var(--a),.32), rgba(var(--a),.06)); box-shadow: 0 0 14px rgba(var(--a),.22); }
+  .atile .pip {
+    position: absolute; top: 9px; inset-inline-start: 10px; width: 6px; height: 6px; border-radius: 50%;
+    width: 4px; height: 4px; background: rgba(var(--a),.9); box-shadow: 0 0 5px rgba(var(--a),.6); opacity: 0; transform: scale(.3);
+    transition: opacity 1s var(--lux), transform 1.2s var(--lux-spring);
+  }
+  .atile.open .pip { opacity: 1; transform: none; animation: breathe 3.2s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .35; } }
+  .atile.pressed { transform: scale(.95); }
+  .atile.launch { border-color: rgba(var(--a),.35); box-shadow: 0 0 22px rgba(var(--a),.14), inset 0 0 18px rgba(var(--a),.1); }
+  .atile.launch .puck { transform: scale(1.06) translateY(-2px); }
+
+  /* ------------------------------------------------------------ games page */
+  /* a deck of covers seen edge-on: the ones behind recede upward into the dark */
+  .deck { position: absolute; inset: 0; }
+  .card {
+    position: absolute; left: 80px; top: 84px; width: 112px; height: 168px; border-radius: 16px; overflow: hidden; cursor: pointer;
+    background-color: #111; background-size: cover; background-position: center;
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 18px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
+    transition: transform 1.2s var(--lux), opacity 1s var(--lux), filter 1s var(--lux), box-shadow 1.6s var(--lux);
+  }
+  .card.mono { background: linear-gradient(160deg, rgba(var(--a),.5), rgba(var(--a),.07) 58%, #07080d); display: grid; place-items: center; }
+  .card .mono-t { font-size: 36px; font-weight: 200; letter-spacing: 5px; color: rgba(255,255,255,.92); margin-top: -14px; direction: ltr; }
+  .card .mono-s { position: absolute; bottom: 42px; left: 8px; right: 8px; text-align: center; font-size: 8px; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,.55); direction: ltr; }
+  .card .chip {
+    position: absolute; left: 8px; right: 8px; bottom: 8px; height: 24px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 9.5px; font-weight: 500; letter-spacing: .2px;
+    opacity: 0; transform: translateY(8px); transition: opacity 1s var(--lux), transform 1.2s var(--lux-spring);
+  }
+  .card .chip b { font-weight: 500; font-variant-numeric: tabular-nums; direction: ltr; color: var(--ink-dim); }
+  .card .chip i { width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--a),.95); box-shadow: 0 0 6px rgba(var(--a),.7); animation: breathe 2.6s ease-in-out infinite; }
+  .card.running .chip { opacity: 1; transform: none; }
+  .card .count {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3;
+    opacity: 0; transition: opacity .7s var(--lux); text-shadow: 0 2px 14px rgba(0,0,0,.6);
+  }
+  .card .count .roll { font-size: 40px; font-weight: 300; }
+  /* a countdown has to keep time: its digits roll quickly */
+  .card .count .roll .col, .ptile .count .roll .col { transition-duration: .45s, .3s, .2s; }
+  .card.holding .count { opacity: 1; }
+  /* the cover dims beneath the countdown, so the digits stay bright */
+  .card::before { content: ''; position: absolute; inset: 0; z-index: 1; background: rgba(0,0,0,.52); opacity: 0; transition: opacity .8s var(--lux); pointer-events: none; }
+  .card.holding::before { opacity: 1; }
+  .card .ask {
+    position: absolute; left: 8px; right: 8px; bottom: 8px; height: 24px; border-radius: 12px; z-index: 3;
+    display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; letter-spacing: .2px; white-space: nowrap;
+    opacity: 0; transform: translateY(8px); transition: opacity .8s var(--lux), transform 1s var(--lux-spring);
+  }
+  .card.asking .ask { opacity: 1; transform: none; }
+  .card.running { box-shadow: 0 18px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(var(--a),.4), 0 0 28px rgba(var(--a),.16); }
+  .gtext { position: absolute; left: 20px; right: 20px; text-align: center; transition: opacity .45s var(--lux), transform .6s var(--lux); }
+  .gtext.swap { opacity: 0; transform: translateY(4px); }
+  .gname { top: 262px; font-size: 12.5px; font-weight: 500; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gmeta { top: 281px; font-size: 10px; color: var(--ink-faint); letter-spacing: .3px; }
+
+  /* ------------------------------------------------------------ overlays */
+  .dots { position: absolute; bottom: 14px; width: 100%; display: flex; justify-content: center; gap: 5px; z-index: 6; direction: rtl; }
+  .dots i { width: 5px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.3); transition: width 1.2s var(--lux-spring), background .8s; }
+  .dots i.on { width: 16px; background: var(--ink); }
+
+  .flash {
+    position: absolute; inset: 0; z-index: 7; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), rgba(var(--a, 255,255,255),.16), transparent 60%);
+  }
+  .flash.go { animation: flash 1.8s var(--lux); }
+  @keyframes flash { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
+  .dim { position: absolute; inset: 0; z-index: 7; pointer-events: none; background: #000; opacity: 0; transition: opacity 1.6s var(--lux); }
+  .dim.on { opacity: .8; }
+
+  .toast {
+    position: absolute; top: 40px; left: 50%; z-index: 8; display: flex; align-items: center; gap: 7px;
+    padding: 6px 12px 6px 10px; border-radius: 16px; font-size: 11.5px; font-weight: 500; letter-spacing: .2px; white-space: nowrap;
+    transform: translate(-50%, -30px) scale(.88); opacity: 0; filter: blur(8px); transition: transform 1.1s var(--lux-spring), opacity .9s var(--lux), filter .9s var(--lux);
+  }
+  .toast.show { transform: translate(-50%, 0) scale(1); opacity: 1; filter: none; }
+  .toast .badge { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9.5px; }
+  .toast.ok .badge { color: #94D3AC; border: 1px solid rgba(148,211,172,.55); }
+  .toast.err .badge { color: #E48B82; border: 1px solid rgba(228,139,130,.55); }
+
+  /* rolling digits */
+  .roll { display: inline-flex; direction: ltr; font-variant-numeric: tabular-nums; font-weight: 500; font-size: 14px; line-height: 1; height: 1em; overflow: hidden; }
+  .roll .col { display: inline-block; width: .62em; transition: transform 1.5s var(--lux), width .8s var(--lux), opacity .6s; }
+  .direct .roll .col { transition-duration: .25s, .25s, .2s; }
+  .roll .col.off { width: 0; opacity: 0; }
+  .roll .col span { display: block; height: 1em; text-align: center; }
+  .roll .suffix { margin-left: 1px; font-size: .8em; opacity: .7; align-self: flex-end; }
+  .vol .roll { font-size: 15px; }
+
+  /* ------------------------------------------------------------ controls */
+  .controls { width: 290px; display: grid; gap: 10px; }
+  .controls h1 { margin: 0 0 2px; font-size: 20px; letter-spacing: -.2px; }
+  .controls p { margin: 0 0 6px; color: var(--ink-dim); font-size: 13px; line-height: 1.55; }
+  .controls button {
+    font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); text-align: start;
+    padding: 11px 14px; border-radius: 14px; cursor: pointer;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    transition: background .2s, transform .15s;
+  }
+  .controls button:hover { background: rgba(255,255,255,.11); }
+  .controls button:active { transform: scale(.98); }
+  .controls .seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .controls .seg button { text-align: center; padding: 9px 2px; font-size: 12px; }
+  .controls .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .controls .pair button { text-align: center; font-size: 13px; }
+  .controls .seg button.on { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.3); }
+  .controls .tag { justify-self: start; font-size: 12px; color: var(--orange); border: 1px solid rgba(255,159,10,.35); padding: 4px 10px; border-radius: 999px; background: rgba(255,159,10,.08); }
+  .controls ul { margin: 4px 0 0; padding-inline-start: 18px; color: var(--ink-faint); font-size: 12.5px; line-height: 1.75; }
+  .controls .sub { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+</style>
+</head>
+<body>
+<main class="stage">
+  <div class="watch" id="watch">
+    <div class="case">
+      <div class="crown" id="crown"></div>
+      <div class="side-btn"></div>
+      <div class="screen" id="screen">
+        <canvas id="field"></canvas>
+
+        <div class="status">
+          <div class="link"><span class="dot"></span>מחובר</div>
+          <div class="clock" id="clock">00:00</div>
+        </div>
+
+        <div class="pages" id="pages">
+          <section class="page on" id="pVoice">
+            <div class="title">קול</div>
+            <div class="orb-hit" id="orbHit" title="הקש כדי לדבר"></div>
+            <div class="hint" id="hint">הקש על ה‑Orb כדי לדבר</div>
+            <div class="caption glass" id="caption"></div>
+            <div class="vol glass sheen" id="vol">
+              <div class="fill" id="volFill"></div>
+              <svg class="ico lo" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/></svg>
+              <div class="num"><span class="roll" id="volNum"></span></div>
+              <svg class="ico hi" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+            </div>
+          </section>
+
+          <section class="page" id="pPower">
+            <div class="title">חשמל</div>
+          </section>
+
+          <section class="page" id="pStats">
+            <div class="title">מצב המחשב</div>
+            <div class="legend">
+              <div class="row glass" id="rowCpu"><span class="sw" style="color:var(--blue)"></span><span class="lbl">מעבד</span><span class="roll" id="cpuNum"></span></div>
+              <div class="row glass" id="rowMem"><span class="sw" style="color:var(--purple)"></span><span class="lbl">זיכרון <small id="memDetail">7.7/15.9GB</small></span><span class="roll" id="memNum"></span></div>
+              <div class="row glass" id="rowDisk"><span class="sw" style="color:var(--green)"></span><span class="lbl">דיסק <small>48GB פנוי</small></span><span class="roll" id="diskNum"></span></div>
+            </div>
+          </section>
+
+          <section class="page" id="pActions">
+            <div class="title">כפתורים</div>
+          </section>
+
+          <section class="page" id="pGames">
+            <div class="title">משחקים</div>
+            <div class="gtext gname" id="gName"></div>
+            <div class="gtext gmeta" id="gMeta"></div>
+          </section>
+        </div>
+
+        <canvas id="fx"></canvas>
+        <div class="flash" id="flash"></div>
+        <div class="dim" id="dim"></div>
+        <div class="toast glass" id="toast"><span class="badge" id="toastBadge">✓</span><span id="toastText"></span></div>
+        <div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="controls">
+    <span class="tag">אב־טיפוס · לא מחובר למחשב</span>
+    <h1>חלקיקים חיים</h1>
+    <p>שדה חלקיקים אחד הוא החומר של כל הממשק, והוא נבנה מחדש בכל דף ומגיב לכל פעולה.</p>
+    <div class="seg" id="seg">
+      <button data-go="0" class="on">קול</button><button data-go="1">חשמל</button><button data-go="2">מצב</button><button data-go="3">כפתורים</button><button data-go="4">משחקים</button>
+    </div>
+    <button id="btnVoice">🎙&nbsp; פקודה קולית: "תנמיך ב‑30 אחוז"</button>
+    <button id="btnFail">⚠️&nbsp; פקודה שלא הובנה</button>
+    <div class="pair"><button id="gPrev">▲&nbsp; משחק קודם</button><button id="gNext">▼&nbsp; משחק הבא</button></div>
+    <ul>
+      <li><b>חשמל:</b> נעילה ושינה בלחיצה. הפעלה מחדש (2 שנ׳) וכיבוי (3 שנ׳) בהחזקה, ושחרור מוקדם מבטל</li>
+      <li><b>כפתורים:</b> לחיצה פותחת. על אפליקציה פתוחה, מביאה אותה לחזית</li>
+      <li><b>משחקים:</b> גלגלת או גרירה למעלה ולמטה מדפדפות. החזקה של 2 שניות על העטיפה פותחת, ולחיצה על משחק פתוח מביאה אותו לחזית</li>
+      <li>גלגלת העכבר על השעון = הכתר (ווליום)</li>
+      <li>גרירה לצדדים על המסך = מעבר דף</li>
+    </ul>
+    <div class="sub">שום פעולה לא נשלחת למחשב.</div>
+  </aside>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ------------------------------------------------------------------ utils
+  const $ = (id) => document.getElementById(id);
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rand = (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a));
+  const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const mix = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+  const smooth = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+  const WHITE = [255, 255, 255];
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const nowS = () => performance.now() / 1000;
+
+  // A restrained palette: platinum light, with each state's hue only as a tint.
+  const C = {
+    plat: hex('#E6E9F0'),
+    idle: hex('#7F97D9'), idleHi: hex('#E4E9F7'),
+    listen: hex('#8FD3DF'), think: hex('#B9A6E0'), ok: hex('#94D3AC'), err: hex('#E48B82'),
+    cpu: hex('#8DB0EA'), mem: hex('#C3ADE6'), disk: hex('#9DD4B0'), hot: hex('#E8B36B'),
+    dim: hex('#4a4f60'), dust: hex('#9aa3bd'),
+  };
+  const tint = (rgb, k) => mix(C.plat, rgb, k);
+
+  const ICONS = {
+    'lock': '<path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="4.5" y="10" width="15" height="10.5" rx="3"/>',
+    'moon': '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
+    'restart': '<path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/><path d="M20.5 4.5V10h-5.5"/>',
+    'power': '<path d="M12 3.5v8"/><path d="M6.8 6.6a8 8 0 1 0 10.4 0"/>',
+    'camera.viewfinder': '<path d="M4 8.5V6a2 2 0 0 1 2-2h2.5"/><path d="M20 8.5V6a2 2 0 0 0-2-2h-2.5"/><path d="M4 15.5V18a2 2 0 0 0 2 2h2.5"/><path d="M20 15.5V18a2 2 0 0 1-2 2h-2.5"/><circle cx="12" cy="12" r="3"/>',
+    'rectangle.3.group': '<rect x="3" y="4" width="18" height="6" rx="1.8"/><rect x="3" y="13" width="8" height="7" rx="1.8"/><rect x="13" y="13" width="8" height="7" rx="1.8"/>',
+    'globe': '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.6 5.4 3.6 8.5s-1.2 6-3.6 8.5c-2.4-2.5-3.6-5.4-3.6-8.5s1.2-6 3.6-8.5z"/>',
+    'folder': '<path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h3.6l2 2.4h7.4a2 2 0 0 1 2 2v7.6a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+    'chart.bar': '<path d="M5 20V11"/><path d="M12 20V5"/><path d="M19 20v-6"/>',
+    'gearshape': '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/>',
+    'check': '<path d="M5 12.5 10 17.5 19 7"/>',
+  };
+  const svg = (name, size, width = 1.7) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+
+  // ------------------------------------------------------------------ rolling digits
+  function Roller(el, { cols = 3, suffix = '%' } = {}) {
+    el.innerHTML = '';
+    const columns = [];
+    for (let c = 0; c < cols; c++) {
+      const col = document.createElement('span');
+      col.className = 'col';
+      for (let d = 0; d <= 9; d++) { const s = document.createElement('span'); s.textContent = d; col.appendChild(s); }
+      el.appendChild(col);
+      columns.push(col);
+    }
+    if (suffix) { const s = document.createElement('span'); s.className = 'suffix'; s.textContent = suffix; el.appendChild(s); }
+    return {
+      set(v) {
+        const str = String(Math.round(clamp(v, 0, 10 ** cols - 1))).padStart(cols, ' ');
+        columns.forEach((col, i) => {
+          const ch = str[i];
+          col.classList.toggle('off', ch === ' ');
+          col.style.transform = `translateY(${-(ch === ' ' ? 0 : +ch)}em)`;
+        });
+      },
+    };
+  }
+
+  // ------------------------------------------------------------------ canvases + sprites
+  const screen = $('screen');
+  const cvF = $('field'), cvX = $('fx');
+  const ctxF = cvF.getContext('2d'), ctxX = cvX.getContext('2d');
+  const W = 272, H = 334;
+  let PR = 2;
+
+  function fitWatch() {
+    const scale = clamp(Math.min(window.innerHeight * 0.82 / 360, (window.innerWidth - 390) / 300), 1, 2.2);
+    document.documentElement.style.setProperty('--scale', scale.toFixed(3));
+    PR = Math.min(3, (window.devicePixelRatio || 1) * scale);
+    for (const cv of [cvF, cvX]) { cv.width = Math.round(W * PR); cv.height = Math.round(H * PR); }
+  }
+  window.addEventListener('resize', fitWatch);
+  fitWatch();
+
+  // A soft glow dot, tinted per colour and cached; drawing a sprite is far
+  // cheaper than a radial gradient per particle per frame.
+  const spriteCache = new Map();
+  function sprite(rgb) {
+    const key = ((rgb[0] >> 3) << 10) | ((rgb[1] >> 3) << 5) | (rgb[2] >> 3);
+    let s = spriteCache.get(key);
+    if (s) return s;
+    s = document.createElement('canvas');
+    s.width = s.height = 32;
+    const g = s.getContext('2d');
+    const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    const [r, gg, b] = rgb.map(Math.round);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.12, `rgba(${r},${gg},${b},0.9)`);
+    grad.addColorStop(0.3, `rgba(${r},${gg},${b},0.16)`);
+    grad.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 32, 32);
+    spriteCache.set(key, s);
+    return s;
+  }
+  function glow(ctx, x, y, size, rgb, alpha) {
+    if (alpha <= 0.01) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    const d = size * 3.2;
+    ctx.drawImage(sprite(rgb), (x - d / 2) * PR, (y - d / 2) * PR, d * PR, d * PR);
+  }
+
+  // ------------------------------------------------------------------ layout
+  const HOT = 0.85;   // above this a ring runs warm and pulses
+  const ORB = { cx: W / 2, cy: 138, r: 60 };
+  const RINGS = { cx: W / 2, cy: 124, radii: [60, 46, 32], keys: ['cpu', 'mem', 'disk'], phase: [0, 0, 0] };
+  const volRect = { x: 18, y: 262, w: 236, h: 38 };
+
+  // RTL: the first tile of each row sits on the right
+  const POWER = [
+    { id: 'lock', label: 'נעילה', icon: 'lock', a: [64, 200, 224], hold: 0, done: 'המחשב ננעל' },
+    { id: 'sleep', label: 'שינה', icon: 'moon', a: [94, 92, 230], hold: 0, done: 'המחשב נכנס לשינה' },
+    { id: 'restart', label: 'הפעלה מחדש', icon: 'restart', a: [255, 159, 10], hold: 2, done: 'המחשב מופעל מחדש' },
+    { id: 'shutdown', label: 'כיבוי', icon: 'power', a: [255, 69, 58], hold: 3, done: 'המחשב נכבה' },
+  ];
+  POWER.forEach((t, i) => {
+    t.rect = { x: i % 2 === 0 ? 141 : 24, y: i < 2 ? 58 : 182, w: 107, h: 114 };
+    t.cx = t.rect.x + t.rect.w / 2;
+    t.cy = t.rect.y + 46;
+  });
+  const P_RADIUS = 22;
+
+  const ACTIONS = [
+    { id: 'screenshot', label: 'צילום מסך', icon: 'camera.viewfinder', a: [64, 200, 224], proc: false, done: 'צילום המסך נשמר' },
+    { id: 'minimize-all', label: 'מזעור הכל', icon: 'rectangle.3.group', a: [94, 92, 230], proc: false, done: 'כל החלונות מוזערו' },
+    { id: 'chrome', label: 'Chrome', icon: 'globe', a: [255, 159, 10], proc: true, open: true },
+    { id: 'explorer', label: 'סייר הקבצים', icon: 'folder', a: [255, 214, 10], proc: true, open: true },
+    { id: 'taskmgr', label: 'מנהל המשימות', icon: 'chart.bar', a: [191, 90, 242], proc: true, open: false },
+    { id: 'settings', label: 'הגדרות', icon: 'gearshape', a: [152, 152, 157], proc: true, open: false },
+  ];
+  ACTIONS.forEach((t, i) => {
+    t.rect = { x: i % 2 === 0 ? 140 : 24, y: 56 + Math.floor(i / 2) * 84, w: 108, h: 76 };
+    t.cx = t.rect.x + t.rect.w / 2;
+    t.cy = t.rect.y + 29;
+    t.tilt = [-0.35, 0.3, -0.2, 0.4, -0.45, 0.25][i];
+    t.focus = 0;
+  });
+
+  // the games actually installed on this PC, most recently played first
+  const lift = (rgb) => { const m = Math.max(...rgb) || 1; const k = Math.max(1, 205 / m); return rgb.map((v) => Math.min(255, v * k)); };
+  const GAMES = [
+    { id: '1817070', name: 'Marvel’s Spider-Man Remastered', store: 'Steam', last: 'לפני 9 ימים', cover: 'covers/1817070.jpg', a: [189, 6, 6] },
+    { id: '730', name: 'Counter-Strike 2', store: 'Steam', last: 'לפני 3 שבועות', cover: 'covers/730.jpg', a: [224, 127, 10] },
+    { id: '4704690', name: 'MECCHA CHAMELEON', store: 'Steam', last: 'לפני 3 חודשים', cover: 'covers/4704690.jpg', a: [195, 149, 131] },
+    { id: '456750', name: 'The Room Three', store: 'Steam', last: 'לפני 3 חודשים', cover: 'covers/456750.jpg', a: [131, 126, 82] },
+    { id: '425580', name: 'The Room Two', store: 'Steam', last: 'לפני 4 חודשים', cover: 'covers/425580.jpg', a: [95, 96, 74] },
+    { id: '288160', name: 'The Room', store: 'Steam', last: 'לפני 4 חודשים', cover: 'covers/288160.jpg', a: [74, 104, 86] },
+    { id: '635', name: 'Rainbow Six Siege X', store: 'Ubisoft Connect', cover: 'covers/359550.jpg', a: [157, 120, 64] },
+    { id: '1771', name: 'Ghost Recon Wildlands', store: 'Ubisoft Connect', cover: 'covers/460930.jpg', a: [224, 214, 196] },
+    { id: 'pcbs2', name: 'PC Building Simulator 2', store: 'Epic Games', cover: null, mono: 'PC', a: [64, 170, 230] },
+  ];
+  GAMES.forEach((g) => { g.tint = lift(g.a); g.running = false; g.since = 0; });
+  const CARD = { x: 80, y: 84, w: 112, h: 168, r: 16 };
+
+  // a point on a rounded rectangle's outline, from top-centre, clockwise
+  function perim(r, rad, u) {
+    const R = Math.min(rad, r.w / 2, r.h / 2);
+    const sw = r.w - 2 * R, sh = r.h - 2 * R, arc = (Math.PI * R) / 2;
+    const L = 2 * sw + 2 * sh + 4 * arc;
+    let s = (((u % 1) + 1) % 1) * L;
+    const take = (len) => { if (s <= len) return true; s -= len; return false; };
+    if (take(sw / 2)) return [r.x + r.w / 2 + s, r.y];
+    if (take(arc)) { const a = -Math.PI / 2 + s / R; return [r.x + r.w - R + Math.cos(a) * R, r.y + R + Math.sin(a) * R]; }
+    if (take(sh)) return [r.x + r.w, r.y + R + s];
+    if (take(arc)) { const a = s / R; return [r.x + r.w - R + Math.cos(a) * R, r.y + r.h - R + Math.sin(a) * R]; }
+    if (take(sw)) return [r.x + r.w - R - s, r.y + r.h];
+    if (take(arc)) { const a = Math.PI / 2 + s / R; return [r.x + R + Math.cos(a) * R, r.y + r.h - R + Math.sin(a) * R]; }
+    if (take(sh)) return [r.x, r.y + r.h - R - s];
+    if (take(arc)) { const a = Math.PI + s / R; return [r.x + R + Math.cos(a) * R, r.y + R + Math.sin(a) * R]; }
+    return [r.x + R + Math.min(s, sw / 2), r.y];
+  }
+
+  // ------------------------------------------------------------------ state
+  const S = {
+    page: 0,
+    volume: 46,
+    orbState: 'idle',         // idle | listening | thinking | success | error
+    energy: 0, bloom: 0, shake: 0, level: 0,
+    stateColor: C.idle.slice(),
+    stats: { cpu: 23, mem: 48, disk: 68 },
+    formedAt: 0,
+    burst: null,              // a committed power action, while it plays out
+    game: 0, gLaunch: 0, gTint: null,
+  };
+  const HOLD = { tile: -1, start: 0, dur: 0, progress: 0, active: false };
+  const GHOLD = { active: false, start: 0, dur: 2, progress: 0 };   // starting a game
+
+  // ------------------------------------------------------------------ particles
+  const N = 1150;
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  const P = [];
+  const ringCirc = RINGS.radii.map((r) => r * TAU);
+  const ringTotal = ringCirc.reduce((a, b) => a + b, 0);
+  const ringCount = ringCirc.map((c) => Math.round((c / ringTotal) * N));
+  ringCount[2] = N - ringCount[0] - ringCount[1];
+
+  const HALO_N = 38;
+  const haloOwners = ACTIONS.map((a, i) => (a.proc ? i : -1)).filter((i) => i >= 0);
+  const haloFill = new Array(ACTIONS.length).fill(0);
+  const edgeCount = [0, 0, 0, 0];
+
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (2 * (i + 0.5)) / N;
+    const rr = Math.sqrt(1 - y * y);
+    const phi = i * GA;
+    let ring = 0, idx = i;
+    if (idx >= ringCount[0]) { ring = 1; idx -= ringCount[0]; }
+    if (ring === 1 && idx >= ringCount[1]) { ring = 2; idx -= ringCount[1]; }
+
+    const p = {
+      sx: Math.cos(phi) * rr, sy: y, sz: Math.sin(phi) * rr,        // sphere
+      ring, ra: (idx / ringCount[ring]) * TAU + rand(-0.02, 0.02),   // rings
+      ro: rand(-2.4, 2.4),
+      seed: rand(TAU), seed2: Math.random(),
+      // drifting dust, used behind the glass on the tile pages
+      bx: rand(-20, W + 20), by: rand(-20, H + 20), dvx: rand(-4, 4), dvy: rand(-3, 3),
+      x: W / 2 + rand(-4, 4), y: 138 + rand(-4, 4), vx: 0, vy: 0,
+      move: 0, scatterUntil: 0, gatherUntil: 0,
+    };
+    // power: most particles trace the four outlines, the rest become dust
+    p.edge = Math.random() < 0.72;
+    p.ptile = i % 4;
+    if (p.edge) p.pk = edgeCount[p.ptile]++;
+    // actions: each app that can be open owns a crew for its orbit
+    const owner = haloOwners[i % haloOwners.length];
+    if (haloFill[owner] < HALO_N && Math.random() < 0.5) {
+      p.atile = owner; p.halo = true; p.ha = (haloFill[owner] / HALO_N) * TAU + rand(-0.05, 0.05); p.hr = rand(-2.2, 2.2);
+      haloFill[owner]++;
+    } else {
+      p.atile = Math.floor(Math.random() * ACTIONS.length); p.halo = false;
+    }
+    P.push(p);
+  }
+  // spread each outline's particles evenly along it
+  for (const p of P) if (p.edge) p.pu = p.pk / edgeCount[p.ptile] + rand(-0.002, 0.002);
+  // games: part of the field frames the front cover, the rest drifts behind
+  let gCount = 0;
+  for (const p of P) { p.gedge = Math.random() < 0.42; if (p.gedge) p.gk = gCount++; }
+  for (const p of P) if (p.gedge) p.gu = p.gk / gCount + rand(-0.001, 0.001);
+
+  const PAGES = [
+    { id: 'pVoice', formation: 'orb' },
+    { id: 'pPower', formation: 'power' },
+    { id: 'pStats', formation: 'rings' },
+    { id: 'pActions', formation: 'actions' },
+    { id: 'pGames', formation: 'games' },
+  ];
+  let formation = 'orb';
+  let prevFormation = 'orb';
+
+  // A page change is told in three acts, each slow enough to watch:
+  //   burst  — a ripple runs outward from the centre and throws the shape apart
+  //   hang   — the cloud turns slowly, like a galaxy, before anything re-forms
+  //   gather — particles settle into the new shape in a sweep
+  const MID = { cx: W / 2, cy: 150 };
+  let swirlStart = 0;
+  function gatherOrder(p, f) {
+    if (f === 'rings') return p.ra / TAU;
+    if (f === 'orb') return (1 - p.sy) / 2;
+    if (f === 'power') return p.edge ? (p.ptile + p.pu) / 4 : p.seed2;
+    if (f === 'games') return p.gedge ? p.gu : p.seed2;
+    return p.halo ? p.atile / ACTIONS.length + p.seed2 * 0.1 : p.seed2;
+  }
+  function setFormation(next, now) {
+    if (next === formation) return;
+    prevFormation = formation;
+    formation = next;
+    swirlStart = now;
+    for (const p of P) {
+      const dx = p.x - MID.cx, dy = p.y - MID.cy;
+      const d = Math.hypot(dx, dy) || 1;
+      p.scR = Math.min(d, 150) + rand(30, 82);
+      p.scA = Math.atan2(dy, dx) + rand(-0.35, 0.35);
+      p.move = now + (Math.min(d, 150) / 80) * 0.12 + rand(0, 0.06);
+      p.scatterUntil = now + 0.45 + gatherOrder(p, next) * 0.3 + rand(0, 0.04);
+      p.gatherUntil = p.scatterUntil + 0.6;
+    }
+  }
+  function soften(seconds, filter = () => true) {
+    const until = nowS() + seconds;
+    for (const p of P) if (filter(p)) p.gatherUntil = Math.max(p.gatherUntil, until);
+  }
+
+  // targets ------------------------------------------------------------
+  let spin = 0, tilt = 0.4;
+  const out = { x: 0, y: 0, depth: 0.6, angle: 0, layer: 'fx', lit: false };
+
+  function orbTarget(p, t) {
+    const cy = Math.cos(spin), sy = Math.sin(spin);
+    const x = p.sx * cy - p.sz * sy;
+    let z = p.sx * sy + p.sz * cy;
+    const ct = Math.cos(tilt), st = Math.sin(tilt);
+    const y = p.sy * ct - z * st;
+    z = p.sy * st + z * ct;
+    const breathe = 1 + Math.sin(t * 0.7) * 0.03;
+    let r = ORB.r * breathe * (1 + S.bloom * 0.55);
+    if (S.orbState === 'listening') r *= 1 + S.level * 0.16 * Math.sin(p.sy * 9 + t * 5.5 + p.seed * 0.3);
+    r += S.energy * 7 * Math.sin(p.seed + t * 3.5);
+    const persp = 1 + z * 0.14;
+    out.x = ORB.cx + x * r * persp + Math.sin(t * 26) * S.shake * S.shake * 7;
+    out.y = ORB.cy + y * r * persp;
+    out.depth = (z + 1) / 2;
+    out.layer = 'fx';
+  }
+
+  function ringTarget(p, t) {
+    const k = p.ring;
+    const a = p.ra + RINGS.phase[k];
+    const R = RINGS.radii[k] + p.ro + Math.sin(t * 3 + p.seed) * 0.6;
+    out.x = RINGS.cx + R * Math.sin(a);
+    out.y = RINGS.cy - R * Math.cos(a);
+    out.angle = ((a % TAU) + TAU) % TAU;
+    out.layer = 'fx';
+  }
+
+  function dustTarget(p, t) {
+    const WW = W + 40, HH = H + 40;
+    let x = p.bx + t * p.dvx, y = p.by + t * p.dvy;
+    x = ((x % WW) + WW) % WW - 20;
+    y = ((y % HH) + HH) % HH - 20;
+    out.x = x + Math.sin(t * 0.4 + p.seed) * 6;
+    out.y = y + Math.cos(t * 0.33 + p.seed) * 6;
+    out.layer = 'field';
+  }
+
+  const EDGE_FLOW = 0.012;   // outlines creep clockwise, one lap a minute and a half
+  function powerTarget(p, t) {
+    // after a commit the particles leave the core one at a time, so they
+    // drift home as a gentle outflow rather than as outlines growing back
+    if (S.exhale && t < p.releaseAt) {
+      out.x = S.exhale.cx + Math.cos(p.seed * 3) * 3 * p.seed2;
+      out.y = S.exhale.cy + Math.sin(p.seed * 3) * 3 * p.seed2;
+      out.layer = 'fx'; out.pull = 0; out.angle = 1;
+      return;
+    }
+    const held = HOLD.active && HOLD.dur > 0 ? POWER[HOLD.tile] : null;
+    // While a tile is held the other outlines give up their particles to it.
+    // Each particle leaves at its own moment, so the shapes dissolve into
+    // streams instead of sliding over as whole rectangles.
+    const pull = held ? smooth((HOLD.progress - p.seed2 * 0.55) / 0.45) : 0;
+    out.pull = 0;
+    if (p.edge) {
+      const u = p.pu + t * EDGE_FLOW;
+      let [x, y] = perim(POWER[p.ptile].rect, P_RADIUS, u);
+      x += Math.sin(t * 2 + p.seed) * 0.7;
+      y += Math.cos(t * 1.7 + p.seed) * 0.7;
+      if (held && p.ptile !== HOLD.tile && pull > 0) {
+        const [hx, hy] = perim(held.rect, P_RADIUS, p.seed2 + t * EDGE_FLOW * 3);
+        x = lerp(x, hx, pull * 0.92); y = lerp(y, hy, pull * 0.92);
+        out.pull = pull;
+      }
+      out.x = x; out.y = y; out.layer = 'fx';
+      out.angle = (((u % 1) + 1) % 1);
+    } else {
+      dustTarget(p, t);
+      if (held && pull > 0) { out.x = lerp(out.x, held.cx, pull * 0.35); out.y = lerp(out.y, held.cy, pull * 0.35); }
+    }
+  }
+
+  function actionsTarget(p, t) {
+    const a = ACTIONS[p.atile];
+    if (p.halo && a.open) {
+      const ang = p.ha + t * (0.55 + a.focus * 2.6);
+      const R = 21 + p.hr + a.focus * 3;
+      const ex = Math.cos(ang) * R, ey = Math.sin(ang) * R * 0.38;
+      const ct = Math.cos(a.tilt), st = Math.sin(a.tilt);
+      out.x = a.cx + ex * ct - ey * st;
+      out.y = a.cy + ex * st + ey * ct;
+      out.depth = (Math.sin(ang) + 1) / 2;
+      out.layer = 'fx';
+    } else dustTarget(p, t);
+  }
+
+  function gamesTarget(p, t) {
+    const g = GAMES[S.game];
+    if (p.gedge) {
+      const pad = 4 - S.gLaunch * 3;   // the frame draws in close when a game starts
+      const r = { x: CARD.x - pad, y: CARD.y - pad, w: CARD.w + pad * 2, h: CARD.h + pad * 2 };
+      const u = p.gu + t * (g.running ? 0.022 : 0.01);
+      const [x, y] = perim(r, CARD.r + pad, u);
+      out.x = x + Math.sin(t * 2 + p.seed) * 0.6;
+      out.y = y + Math.cos(t * 1.7 + p.seed) * 0.6;
+      out.angle = ((u % 1) + 1) % 1;
+      out.layer = 'fx';
+    } else dustTarget(p, t);
+  }
+
+  // A committed power action: everything is drawn slowly into the icon, holds
+  // its breath, then a single thin ring of light widens and the particles
+  // exhale back to where they belong.
+  const IMPLODE = 1.1, HUSH = 0.4, SHOCK = 0;
+  function burstTarget(p, t, b) {
+    const k = t - b.start;
+    const ang = p.seed * 3;
+    const e = smooth(k / IMPLODE);
+    const r = k < IMPLODE ? (4 + 28 * (1 - e)) * (0.35 + p.seed2) : 3 * p.seed2;
+    out.x = b.cx + Math.cos(ang) * r;
+    out.y = b.cy + Math.sin(ang) * r;
+    out.layer = 'fx';
+    return k;
+  }
+
+  // the volume stream: particles flowing inside the glass slider
+  const STREAM = Array.from({ length: 110 }, () => ({ u: rand(), v: rand(-1, 1), sp: rand(0.6, 1.4), seed: rand(TAU) }));
+  // comets: transient particles that fly a curve with a fading tail
+  let comets = [];
+  // light rings: a single thin stroke that widens and fades
+  let lightRings = [];
+  function ringOfLight(x, y, rgb, { delay = 0, dur = 1.8, from = 8, to = 150, width = 1 } = {}) {
+    lightRings.push({ x, y, rgb, start: nowS() + delay, dur, from, to, width });
+  }
+  // threads: a hairline of light that draws itself along a curve
+  let threads = [];
+  function thread(x0, y0, cx, cy, x1, y1, rgb, { delay = 0, dur = 1.4 } = {}) {
+    threads.push({ x0, y0, cx, cy, x1, y1, rgb, start: nowS() + delay, dur });
+  }
+  function fireComets(n, make) { const t = nowS(); for (let i = 0; i < n; i++) comets.push(make(i, t)); }
+
+  // ------------------------------------------------------------------ frame
+  let last = nowS();
+
+  function frame(nowMs) {
+    const now = nowMs / 1000;
+    const dt = Math.min(1 / 30, now - last);
+    last = now;
+    const t = now;
+
+    S.energy = Math.max(0, S.energy - dt * 0.6);
+    S.bloom = Math.max(0, S.bloom - dt * 0.75);
+    S.shake = Math.max(0, S.shake - dt * 0.9);
+    for (const a of ACTIONS) a.focus = Math.max(0, a.focus - dt * 0.45);
+    S.gLaunch = Math.max(0, S.gLaunch - dt * 0.5);
+    S.gTint = mix(S.gTint || GAMES[0].tint, GAMES[S.game].tint, Math.min(1, dt * 1.3));
+    if (S.orbState === 'listening') {
+      const target = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.6) * Math.sin(t * 1.1 + 1));
+      S.level = lerp(S.level, target, 0.08);
+    } else S.level = lerp(S.level, 0, 0.1);
+
+    const wantColor = { idle: C.idle, listening: C.listen, thinking: C.think, success: C.ok, error: C.err }[S.orbState];
+    // verdicts land fast; moods drift
+    S.stateColor = mix(S.stateColor, wantColor, Math.min(1, dt * (S.orbState === 'error' || S.orbState === 'success' ? 3.2 : 1.6)));
+    spin += dt * (0.22 + S.energy * 1.1 + (S.orbState === 'thinking' ? 1.5 : 0) + (S.orbState === 'listening' ? 0.4 : 0));
+    tilt = 0.38 + Math.sin(t * 0.2) * 0.12;
+    for (let k = 0; k < 3; k++) RINGS.phase[k] += dt * (0.1 + (S.stats[RINGS.keys[k]] / 100) * 1.3);
+
+    stepHold(now);
+    stepGameHold(now);
+
+    for (const ctx of [ctxF, ctxX]) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+    ctxF.fillStyle = '#000';
+    ctxF.fillRect(0, 0, cvF.width, cvF.height);
+    ctxX.clearRect(0, 0, cvX.width, cvX.height);
+
+    // aura behind the orb, fading out as the orb leaves
+    const orbPresence = formation === 'orb' ? 1 : 0;
+    S.aura = lerp(S.aura ?? 1, orbPresence, Math.min(1, dt * (orbPresence ? 0.9 : 1.6)));
+    if (S.aura > 0.01) {
+      const [r, g, b] = S.stateColor.map(Math.round);
+      const a = (0.15 + S.energy * 0.14 + S.level * 0.12 + Math.sin(t * 0.7) * 0.03) * S.aura;
+      const grad = ctxF.createRadialGradient(ORB.cx * PR, ORB.cy * PR, 0, ORB.cx * PR, ORB.cy * PR, ORB.r * 2.3 * PR);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctxF.fillStyle = grad;
+      ctxF.fillRect(0, 0, cvF.width, cvF.height);
+    }
+
+    ctxF.globalCompositeOperation = 'lighter';
+    ctxX.globalCompositeOperation = 'lighter';
+
+    const b = S.burst;
+    const heldCfg = HOLD.tile >= 0 ? POWER[HOLD.tile] : null;
+
+    for (const p of P) {
+      const useNew = now >= p.scatterUntil;
+      const scattering = now >= p.move && !useNew;
+      const f = useNew ? formation : prevFormation;
+      out.depth = 0.6; out.angle = 0;
+      let burstK = -1;
+
+      if (scattering) {
+        // the shape unwinds into a single tilted ring that turns slowly
+        const a = p.scA + (now - swirlStart) * 0.5;
+        const R = 92 + p.seed2 * 8;
+        out.x = MID.cx + Math.cos(a) * R;
+        out.y = MID.cy + Math.sin(a) * R * 0.3;
+        out.layer = 'fx';
+      } else if (f === 'power' && b) burstK = burstTarget(p, t, b);
+      else if (f === 'orb') orbTarget(p, t);
+      else if (f === 'rings') ringTarget(p, t);
+      else if (f === 'power') powerTarget(p, t);
+      else if (f === 'actions') actionsTarget(p, t);
+      else gamesTarget(p, t);
+
+      const tx = out.x, ty = out.y;
+      const layer = out.layer;
+
+      // dust wraps around the screen; teleport rather than streak across it
+      if (layer === 'field' && !scattering && now > p.gatherUntil && Math.abs(tx - p.x) + Math.abs(ty - p.y) > 90) {
+        p.x = tx; p.y = ty; p.vx = p.vy = 0;
+      }
+
+      // springs: soft while drifting or gathering, firm once settled
+      const gathering = useNew && now < p.gatherUntil;
+      let K = scattering ? 40 : gathering ? 90 : 150;
+      let Cd = scattering ? 7 : gathering ? 13 : 17;
+      if (burstK >= 0) {
+        if (burstK < IMPLODE) { K = 30; Cd = 8; }
+        else { K = 160; Cd = 22; }
+      }
+      p.vx += ((tx - p.x) * K - p.vx * Cd) * dt;
+      p.vy += ((ty - p.y) * K - p.vy * Cd) * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      const speed = Math.hypot(p.vx, p.vy);
+      let rgb, size, alpha;
+      if (scattering) {
+        rgb = C.plat; size = 0.8; alpha = 0.5;
+      } else if (f === 'orb') {
+        const hi = S.orbState === 'idle' ? C.idleHi : mix(S.stateColor, WHITE, 0.55);
+        rgb = mix(S.stateColor, hi, 0.12 + out.depth * 0.45);
+        size = 0.55 + out.depth * 1.05 + S.level * 0.3;
+        alpha = 0.1 + out.depth * 0.72 + S.energy * 0.12;
+      } else if (f === 'rings') {
+        const key = RINGS.keys[p.ring];
+        const v = S.stats[key] / 100;
+        const lit = out.angle < v * TAU;
+        const hot = v > HOT;
+        const col = hot ? mix(C[key], C.hot, 0.6 + 0.25 * Math.sin(t * 2)) : C[key];
+        rgb = lit ? col : C.dim;
+        size = lit ? 0.95 : 0.7;
+        alpha = lit ? 0.85 : 0.08;
+      } else if (burstK >= 0) {
+        const acc = POWER[b.tile].a;
+        const k = burstK;
+        rgb = tint(acc, 0.25 + smooth(k / IMPLODE) * 0.35);
+        size = 0.8;
+        alpha = 0.55 + smooth(k / IMPLODE) * 0.3;
+      } else if (f === 'power') {
+        if (p.edge) {
+          const acc = POWER[p.ptile].a;
+          const isHeld = heldCfg && p.ptile === HOLD.tile && HOLD.dur > 0;
+          const lit = isHeld && out.angle < HOLD.progress;
+          rgb = lit ? tint(acc, 0.55) : tint(acc, 0.2);
+          size = lit ? 1.1 : 0.72;
+          alpha = lit ? 0.95 : 0.3 + 0.05 * Math.sin(t * 1.1 + p.seed * 4);
+          if (out.pull > 0) { rgb = mix(rgb, tint(heldCfg.a, 0.45), out.pull); alpha += out.pull * 0.3; }
+        } else {
+          rgb = C.dust; size = 1; alpha = 0.06;
+        }
+      } else if (f === 'actions') {
+        const acc = ACTIONS[p.atile].a;
+        if (layer === 'fx') {
+          const focus = ACTIONS[p.atile].focus;
+          rgb = tint(acc, 0.35 - out.depth * 0.15);
+          size = 0.55 + out.depth * 0.6 + focus * 0.25;
+          alpha = 0.12 + out.depth * 0.6 + focus * 0.2;
+        } else {
+          rgb = C.dust; size = 1; alpha = 0.06;
+        }
+      } else {
+        const g = GAMES[S.game];
+        if (layer === 'fx') {
+          const breathe = g.running ? 0.12 * Math.sin(t * 1.4 + out.angle * TAU * 2) : 0;
+          const lit = GHOLD.active && out.angle < GHOLD.progress;
+          rgb = lit ? tint(S.gTint, 0.8) : tint(S.gTint, 0.5 + S.gLaunch * 0.3);
+          size = lit ? 1.1 : 0.72 + S.gLaunch * 0.35;
+          alpha = lit ? 0.95 : 0.3 + breathe + S.gLaunch * 0.45 + (g.running ? 0.12 : 0);
+        } else { rgb = tint(S.gTint, 0.4); size = 1; alpha = 0.07; }
+      }
+      alpha += Math.min(0.25, speed / 1600);
+      glow(layer === 'field' ? ctxF : ctxX, p.x, p.y, size, rgb, alpha);
+    }
+
+    // end caps on the rings, like Activity
+    if (formation === 'rings' && now > S.formedAt) {
+      for (let k = 0; k < 3; k++) {
+        const key = RINGS.keys[k];
+        const v = S.stats[key] / 100;
+        const a = v * TAU;
+        const R = RINGS.radii[k];
+        const hot = v > HOT;
+        glow(ctxX, RINGS.cx + R * Math.sin(a), RINGS.cy - R * Math.cos(a), 2.2 + (hot ? Math.sin(t * 2) * 0.4 : 0), mix(hot ? C.hot : C[key], WHITE, 0.3), 0.8);
+      }
+    }
+
+    // the head of the progress on a held power tile
+    if (HOLD.active && HOLD.dur > 0) {
+      const cfg = POWER[HOLD.tile];
+      const [x, y] = perim(cfg.rect, P_RADIUS, HOLD.progress);
+      glow(ctxX, x, y, 2.2, tint(cfg.a, 0.6), 0.9);
+    }
+    // the head of the progress around a cover being confirmed
+    if (GHOLD.active) {
+      const pad = 4 - S.gLaunch * 3;
+      const [x, y] = perim({ x: CARD.x - pad, y: CARD.y - pad, w: CARD.w + pad * 2, h: CARD.h + pad * 2 }, CARD.r + pad, GHOLD.progress);
+      glow(ctxX, x, y, 2.2, tint(S.gTint, 0.8), 0.9);
+    }
+    // the hush before the shockwave: a single hot core
+    if (b) {
+      const k = t - b.start;
+      if (k > IMPLODE * 0.6 && k < IMPLODE + HUSH + 0.25) {
+        const e = k < IMPLODE + HUSH ? smooth((k - IMPLODE * 0.6) / (IMPLODE * 0.4 + HUSH)) : 1 - (k - IMPLODE - HUSH) / 0.25;
+        glow(ctxX, b.cx, b.cy, 3 + e * 4, tint(POWER[b.tile].a, 0.5), e * 0.8);
+      }
+    }
+
+    // the stream inside the volume slider
+    const voiceVis = S.page === 0 ? 1 : 0;
+    S.streamVis = lerp(S.streamVis ?? 1, voiceVis, Math.min(1, dt * (voiceVis ? 3 : 12)));
+    if (S.streamVis > 0.02) {
+      const fillW = volRect.w * S.volume / 100;
+      ctxF.save();
+      ctxF.beginPath();
+      ctxF.rect(volRect.x * PR, volRect.y * PR, fillW * PR, volRect.h * PR);
+      ctxF.clip();
+      for (const s of STREAM) {
+        s.u += dt * s.sp * (0.07 + S.volume / 260) * (1 + S.energy * 1.5);
+        if (s.u > 1) { s.u = 0; s.v = rand(-1, 1); }
+        const x = volRect.x + s.u * fillW;
+        const y = volRect.y + volRect.h / 2 + s.v * 12 + Math.sin(t * 4 + s.seed) * 2;
+        glow(ctxF, x, y, 0.7, tint(mix(C.cpu, C.listen, s.u), 0.5), (0.2 + 0.3 * Math.sin(s.u * Math.PI)) * S.streamVis);
+      }
+      ctxF.restore();
+    }
+
+    // rings of light
+    lightRings = lightRings.filter((r) => {
+      const k = (now - r.start) / r.dur;
+      if (k < 0) return true;
+      if (k >= 1) return false;
+      const e = 1 - Math.pow(1 - k, 3);
+      ctxX.globalCompositeOperation = 'lighter';
+      ctxX.globalAlpha = (1 - k) * 0.55;
+      ctxX.strokeStyle = `rgb(${r.rgb.map(Math.round).join(',')})`;
+      ctxX.lineWidth = r.width * PR;
+      ctxX.beginPath();
+      ctxX.arc(r.x * PR, r.y * PR, (r.from + (r.to - r.from) * e) * PR, 0, TAU);
+      ctxX.stroke();
+      return true;
+    });
+
+    // threads of light: the head travels, the line behind it fades away
+    threads = threads.filter((th) => {
+      const k = (now - th.start) / th.dur;
+      if (k < 0) return true;
+      if (k >= 1.35) return false;
+      const at = (q) => {
+        const s = smooth(clamp(q, 0, 1));
+        return [
+          (1 - s) * (1 - s) * th.x0 + 2 * (1 - s) * s * th.cx + s * s * th.x1,
+          (1 - s) * (1 - s) * th.y0 + 2 * (1 - s) * s * th.cy + s * s * th.y1,
+        ];
+      };
+      const head = Math.min(1, k), tailLen = 0.45;
+      const fadeOut = k > 1 ? 1 - (k - 1) / 0.35 : 1;
+      ctxX.lineWidth = 1.1 * PR;
+      ctxX.lineCap = 'round';
+      ctxX.strokeStyle = `rgb(${th.rgb.map(Math.round).join(',')})`;
+      const STEPS = 18;
+      for (let j = 0; j < STEPS; j++) {
+        const q0 = head - tailLen * (j + 1) / STEPS, q1 = head - tailLen * j / STEPS;
+        if (q1 <= 0) break;
+        const [ax, ay] = at(q0), [bx, by] = at(q1);
+        ctxX.globalAlpha = (1 - j / STEPS) * 0.7 * fadeOut;
+        ctxX.beginPath(); ctxX.moveTo(ax * PR, ay * PR); ctxX.lineTo(bx * PR, by * PR); ctxX.stroke();
+      }
+      if (k <= 1) { const [hx, hy] = at(head); glow(ctxX, hx, hy, 1.6, mix(th.rgb, WHITE, 0.5), 0.9 * fadeOut); }
+      return true;
+    });
+
+    // comets
+    comets = comets.filter((c) => {
+      const k = (now - c.start) / c.dur;
+      if (k < 0) return true;
+      if (k >= 1) return false;
+      const at = (q) => {
+        const s = smooth(Math.max(0, q));
+        return [
+          (1 - s) * (1 - s) * c.x0 + 2 * (1 - s) * s * c.cx + s * s * c.x1,
+          (1 - s) * (1 - s) * c.y0 + 2 * (1 - s) * s * c.cy + s * s * c.y1,
+        ];
+      };
+      for (let j = 0; j < 5; j++) {
+        const [x, y] = at(k - j * 0.035);
+        glow(ctxX, x, y, j === 0 ? 2 : 1.5 - j * 0.2, j === 0 ? mix(c.rgb, WHITE, 0.4) : c.rgb, (1 - j * 0.2) * (1 - k * 0.25));
+      }
+      return true;
+    });
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ------------------------------------------------------------------ shared UI
+  const pulseScreen = () => { screen.classList.add('tap'); setTimeout(() => screen.classList.remove('tap'), 90); };
+
+  function rippleOn(el, e) {
+    const r = el.getBoundingClientRect();
+    const x = e ? e.clientX - r.left : r.width / 2, y = e ? e.clientY - r.top : r.height / 2;
+    el.style.setProperty('--rx', (x / r.width) * 100 + '%');
+    el.style.setProperty('--ry', (y / r.height) * 100 + '%');
+    el.classList.remove('rippling'); void el.offsetWidth; el.classList.add('rippling');
+  }
+
+  function sweep(el, rtl) {
+    el.classList.remove('sweep', 'sweep-rtl'); void el.offsetWidth;
+    el.classList.add(rtl ? 'sweep-rtl' : 'sweep');
+  }
+
+  let toastTimer;
+  function toast(kind, text) {
+    const el = $('toast');
+    el.className = 'toast glass ' + kind;
+    $('toastBadge').textContent = kind === 'ok' ? '✓' : '!';
+    $('toastText').textContent = text;
+    requestAnimationFrame(() => el.classList.add('show'));
+    screen.classList.add('toasting');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.classList.remove('show'); screen.classList.remove('toasting'); }, 3800);
+  }
+
+  function flashAt(x, y, rgb) {
+    const el = $('flash');
+    el.style.setProperty('--fx', (x / W) * 100 + '%');
+    el.style.setProperty('--fy', (y / H) * 100 + '%');
+    el.style.setProperty('--a', rgb.join(','));
+    el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  }
+
+  // ------------------------------------------------------------------ voice page
+  const volNum = Roller($('volNum'));
+  const volEl = $('vol'), volFill = $('volFill');
+  function setVolume(v, { quiet = false, direct = false } = {}) {
+    v = clamp(Math.round(v), 0, 100);
+    volEl.classList.toggle('direct', direct);
+    S.volume = v;
+    volFill.style.width = v + '%';
+    volNum.set(v);
+    if (!quiet) S.energy = Math.min(1, S.energy + 0.35);
+  }
+  setVolume(46, { quiet: true });
+
+  let sliding = false;
+  const slideTo = (e) => { const r = volEl.getBoundingClientRect(); setVolume(((e.clientX - r.left) / r.width) * 100, { direct: true }); };
+  volEl.addEventListener('pointerdown', (e) => { sliding = true; volEl.setPointerCapture(e.pointerId); slideTo(e); rippleOn(volEl, e); });
+  volEl.addEventListener('pointermove', (e) => { if (sliding) slideTo(e); });
+  volEl.addEventListener('pointerup', () => { sliding = false; });
+
+  let crownY = 0;
+  $('watch').addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (S.page === 4) { gameWheel(e.deltaY); return; }
+    if (S.page !== 0) return;
+    const step = e.deltaY > 0 ? -2 : 2;
+    setVolume(S.volume + step, { direct: true });
+    crownY += step;
+    $('crown').style.backgroundPosition = `0 ${crownY}px`;
+  }, { passive: false });
+
+  const caption = $('caption'), hint = $('hint');
+  let running = false;
+  async function typeInto(text, ms) {
+    caption.innerHTML = '<span></span><span class="cursor"></span>';
+    const span = caption.firstChild;
+    for (let i = 1; i <= text.length; i++) { span.textContent = text.slice(0, i); await wait(ms); }
+  }
+  async function voiceDemo(fail) {
+    if (running) return;
+    running = true;
+    if (S.page !== 0) { goTo(0); await wait(1200); }
+    hint.style.opacity = 0;
+    pulseScreen();
+    S.orbState = 'listening';
+    S.energy = 0.45;
+    caption.classList.remove('thinking');
+    caption.innerHTML = '<span class="muted">מקשיב<i>.</i><i>.</i><i>.</i></span>';
+    caption.classList.add('show');
+    await wait(1100);
+    await typeInto(fail ? 'תעשה לי קפה' : 'תנמיך ב‑30 אחוז', 125);
+    await wait(900);
+    S.orbState = 'thinking';
+    caption.classList.add('thinking');
+    caption.querySelector('.cursor')?.remove();
+    await wait(1600);
+    caption.classList.remove('thinking');
+    if (fail) {
+      S.orbState = 'error';
+      S.shake = 1;
+      pulseScreen();
+      toast('err', 'לא הבנתי את הפקודה');
+      await wait(3200);
+    } else {
+      S.orbState = 'success';
+      S.bloom = 1;
+      S.energy = 1;
+      pulseScreen();
+      const target = Math.max(0, S.volume - 30);
+      const fillX = volRect.x + volRect.w * target / 100;
+      await wait(1500);
+      setVolume(target);
+      sweep(volEl);
+      await wait(500);
+      toast('ok', `ווליום ירד ל‑${target}%`);
+      await wait(3300);
+    }
+    caption.classList.remove('show');
+    await wait(400);
+    S.orbState = 'idle';
+    hint.style.opacity = 1;
+    running = false;
+  }
+  $('btnVoice').onclick = () => voiceDemo(false);
+  $('btnFail').onclick = () => voiceDemo(true);
+  $('orbHit').addEventListener('click', () => { if (!dragged) voiceDemo(false); });
+
+  // ------------------------------------------------------------------ power page
+  const powerEls = POWER.map((cfg, i) => {
+    const el = document.createElement('div');
+    el.className = 'ptile tile-in sheen';
+    el.style.cssText = `left:${cfg.rect.x}px;top:${cfg.rect.y}px;width:${cfg.rect.w}px;height:${cfg.rect.h}px;--a:${cfg.a.join(',')};--i:${i}`;
+    el.innerHTML = `<div class="flood"></div><div class="puck">${svg(cfg.icon, 19)}</div><div class="name">${cfg.label}</div>` +
+      `<div class="count"><span class="roll"></span></div><div class="check">${svg('check', 28, 2.4)}</div>`;
+    $('pPower').appendChild(el);
+    cfg.counter = Roller(el.querySelector('.count .roll'), { cols: 1, suffix: '' });
+    el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); pressPower(i, e); });
+    el.addEventListener('pointerup', () => releasePower());
+    el.addEventListener('pointercancel', () => releasePower(true));
+    return el;
+  });
+
+  function pressPower(i, e) {
+    if (S.burst || S.page !== 1 || now_() < S.formedAt - 0.4) return;
+    const cfg = POWER[i];
+    Object.assign(HOLD, { tile: i, start: nowS(), dur: cfg.hold, progress: 0, active: true });
+    const el = powerEls[i];
+    el.classList.remove('draining');
+    el.classList.add(cfg.hold > 0 ? 'holding' : 'pressed');
+    if (cfg.hold > 0) cfg.counter.set(cfg.hold);
+    rippleOn(el, e);
+  }
+  const now_ = nowS;
+
+  function releasePower(cancelOnly) {
+    if (!HOLD.active) return;
+    const i = HOLD.tile, cfg = POWER[i], el = powerEls[i];
+    HOLD.active = false;
+    el.classList.remove('pressed');
+    if (cfg.hold === 0 && !cancelOnly) { commitPower(i); return; }
+    // let go early: everything exhales back to where it was
+    el.classList.remove('holding');
+    el.classList.add('draining');
+    el.style.setProperty('--p', 0);
+    HOLD.tile = -1;
+    soften(1.4);
+  }
+
+  function stepHold(now) {
+    if (!HOLD.active || HOLD.dur === 0) return;
+    const cfg = POWER[HOLD.tile];
+    HOLD.progress = clamp((now - HOLD.start) / HOLD.dur, 0, 1);
+    powerEls[HOLD.tile].style.setProperty('--p', HOLD.progress.toFixed(4));
+    cfg.counter.set(Math.max(1, Math.ceil(HOLD.dur * (1 - HOLD.progress))));
+    if (HOLD.progress >= 1) { HOLD.active = false; commitPower(HOLD.tile); }
+  }
+
+  function commitPower(i) {
+    const cfg = POWER[i], el = powerEls[i];
+    const t = nowS();
+    S.burst = { tile: i, start: t, cx: cfg.cx, cy: cfg.cy };
+    el.classList.remove('holding', 'pressed');
+    el.classList.add('committed');
+    pulseScreen();
+    setTimeout(() => {                         // the exhale
+      pulseScreen();
+      S.burst = null;
+      const t0 = nowS();
+      S.exhale = { cx: cfg.cx, cy: cfg.cy };
+      for (const q of P) { q.releaseAt = t0 + Math.random() * 1.3; q.gatherUntil = q.releaseAt + 2.2; }
+      setTimeout(() => { S.exhale = null; }, 1400);
+      sweep(el, true);
+      flashAt(cfg.cx, cfg.cy, cfg.a);
+      toast('ok', cfg.done + ' · הדגמה');
+      el.classList.add('draining');
+      el.style.setProperty('--p', 0);
+      HOLD.tile = -1;
+      if (cfg.id === 'shutdown') { $('dim').classList.add('on'); setTimeout(() => $('dim').classList.remove('on'), 2200); }
+    }, (IMPLODE + HUSH) * 1000);
+    setTimeout(() => el.classList.remove('committed'), (IMPLODE + HUSH + 2.2) * 1000);
+  }
+
+  // ------------------------------------------------------------------ actions page
+  const actionEls = ACTIONS.map((cfg, i) => {
+    const el = document.createElement('div');
+    el.className = 'atile tile-in sheen' + (cfg.open ? ' open' : '');
+    el.style.cssText = `left:${cfg.rect.x}px;top:${cfg.rect.y}px;width:${cfg.rect.w}px;height:${cfg.rect.h}px;--a:${cfg.a.join(',')};--i:${i}`;
+    el.innerHTML = `<span class="pip"></span><div class="puck">${svg(cfg.icon, 17)}</div><div class="name">${cfg.label}</div>`;
+    $('pActions').appendChild(el);
+    el.addEventListener('pointerdown', () => el.classList.add('pressed'));
+    el.addEventListener('pointerleave', () => el.classList.remove('pressed'));
+    el.addEventListener('pointerup', (e) => { el.classList.remove('pressed'); launch(i, e); });
+    return el;
+  });
+
+  const launching = new Set();
+  function launch(i, e) {
+    if (S.page !== 3 || launching.has(i) || nowS() < S.formedAt - 0.4) return;
+    const cfg = ACTIONS[i], el = actionEls[i];
+    launching.add(i);
+    rippleOn(el, e);
+    el.classList.add('launch');
+    pulseScreen();
+    // a plume rises from the icon and leaves through the top of the screen,
+    // toward the computer
+    sweep(el, true);
+    setTimeout(() => el.classList.remove('launch'), 1500);
+    if (cfg.proc && !cfg.open) {
+      setTimeout(() => {
+        cfg.open = true;
+        el.classList.add('open');
+        soften(2.2, (p) => p.halo && p.atile === i);   // the crew rises out of the depth into orbit
+        toast('ok', `${cfg.label} נפתח`);
+      }, 1200);
+    } else if (cfg.proc) {
+      setTimeout(() => { cfg.focus = 1; toast('ok', `${cfg.label} הובא לחזית`); }, 700);
+    } else {
+      setTimeout(() => toast('ok', cfg.done), 1000);
+    }
+    setTimeout(() => launching.delete(i), 1800);
+  }
+
+  // ------------------------------------------------------------------ games page
+  const deck = document.createElement('div');
+  deck.className = 'deck tile-in';
+  deck.style.setProperty('--i', 0);
+  $('pGames').insertBefore(deck, $('gName'));
+  GAMES.forEach((g) => {
+    const el = document.createElement('div');
+    el.className = 'card sheen' + (g.cover ? '' : ' mono');
+    el.style.setProperty('--a', g.a.join(','));
+    if (g.cover) el.style.backgroundImage = `url('${g.cover}')`;
+    el.innerHTML = (g.cover ? '' : `<div class="mono-t">${g.mono}</div><div class="mono-s">${g.name}</div>`) +
+      '<div class="chip glass"><i></i><span>משחק עכשיו</span><b>0:00</b></div>' +
+      '<div class="count"><span class="roll"></span></div><div class="ask glass">החזק כדי לשחק</div>';
+    deck.appendChild(el);
+    g.el = el;
+    g.clockEl = el.querySelector('.chip b');
+    g.counter = Roller(el.querySelector('.count .roll'), { cols: 1, suffix: '' });
+  });
+  const gName = $('gName'), gMeta = $('gMeta');
+  let cardPressed = false;
+
+  function layoutDeck() {
+    GAMES.forEach((g, i) => {
+      const d = i - S.game;
+      let ty = 0, sc = 1, op = 1, blur = 0, br = 1, z = 10;
+      if (d === 0) { if (GHOLD.active) sc = 0.965; else if (cardPressed) sc = 0.97; }
+      else if (d === 1) { ty = -22; sc = 0.9; op = 0.62; blur = 0.6; br = 0.6; z = 9; }
+      else if (d === 2) { ty = -40; sc = 0.8; op = 0.3; blur = 1.2; br = 0.42; z = 8; }
+      else if (d > 2) { ty = -52; sc = 0.72; op = 0; blur = 2; br = 0.3; z = 7; }
+      else { ty = 56; sc = 1.06; op = 0; blur = 2; z = 11; }   // passed: it falls toward you and away
+      const el = g.el;
+      el.style.transform = `translateY(${ty}px) scale(${sc})`;
+      el.style.opacity = op;
+      el.style.filter = `blur(${blur}px) brightness(${br})`;
+      el.style.zIndex = z;
+      el.style.pointerEvents = d === 0 ? 'auto' : 'none';
+    });
+  }
+  function gameMeta(g) { return g.running ? `${g.store} · פתוח עכשיו` : g.last ? `${g.store} · שיחקת ${g.last}` : g.store; }
+  function setGameText(instant) {
+    const g = GAMES[S.game];
+    const apply = () => { gName.textContent = g.name; gMeta.textContent = gameMeta(g); gName.classList.remove('swap'); gMeta.classList.remove('swap'); };
+    if (instant) return apply();
+    gName.classList.add('swap'); gMeta.classList.add('swap');
+    setTimeout(apply, 380);
+  }
+  function stepGame(dir) {
+    const n = clamp(S.game + dir, 0, GAMES.length - 1);
+    if (n === S.game) return;
+    S.game = n;
+    layoutDeck();
+    setGameText();
+  }
+  let wheelAcc = 0, wheelLock = 0;
+  function gameWheel(dy) {
+    const now = performance.now();
+    wheelAcc += dy;
+    if (now < wheelLock) return;
+    if (Math.abs(wheelAcc) >= 50) { stepGame(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; wheelLock = now + 480; }
+  }
+  // on the deck, a vertical drag browses, a tap launches, a sideways drag still turns the page
+  let gStart = null, justStarted = false;
+  deck.addEventListener('pointerdown', (e) => {
+    gStart = { x: e.clientX, y: e.clientY };
+    cardPressed = true;
+    justStarted = false;
+    const g = GAMES[S.game];
+    if (!g.running && S.page === 4 && nowS() >= S.formedAt - 0.4) {
+      Object.assign(GHOLD, { active: true, start: nowS(), progress: 0 });
+      g.el.classList.remove('asking');
+      g.el.classList.add('holding');
+      g.counter.set(GHOLD.dur);
+    }
+    layoutDeck();
+    deck.setPointerCapture(e.pointerId);
+  });
+  deck.addEventListener('pointermove', (e) => {
+    // moving means browsing, not confirming
+    if (gStart && GHOLD.active && Math.hypot(e.clientX - gStart.x, e.clientY - gStart.y) > 12) cancelGameHold();
+  });
+  deck.addEventListener('pointerup', (e) => {
+    if (!gStart) return;
+    const dx = e.clientX - gStart.x, dy = e.clientY - gStart.y;
+    gStart = null; cardPressed = false;
+    const g = GAMES[S.game];
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { cancelGameHold(); layoutDeck(); goTo(S.page + (dx > 0 ? 1 : -1)); return; }
+    if (Math.abs(dy) > 30) { cancelGameHold(); layoutDeck(); stepGame(dy > 0 ? 1 : -1); return; }
+    if (GHOLD.active) {                         // let go too early
+      cancelGameHold();
+      g.el.classList.add('asking');
+      setTimeout(() => g.el.classList.remove('asking'), 2200);
+    } else if (g.running && !justStarted) {
+      bringGameForward(g);
+    }
+    layoutDeck();
+  });
+  function cancelGameHold() {
+    if (!GHOLD.active) return;
+    GHOLD.active = false;
+    GAMES[S.game].el.classList.remove('holding');
+    soften(1.0, (p) => p.gedge);
+  }
+  function stepGameHold(now) {
+    if (!GHOLD.active) return;
+    const g = GAMES[S.game];
+    GHOLD.progress = clamp((now - GHOLD.start) / GHOLD.dur, 0, 1);
+    g.counter.set(Math.max(1, Math.ceil(GHOLD.dur * (1 - GHOLD.progress))));
+    if (GHOLD.progress >= 1) {
+      GHOLD.active = false;
+      justStarted = true;
+      g.el.classList.remove('holding');
+      layoutDeck();
+      launchGame();
+    }
+  }
+  function bringGameForward(g) {
+    sweep(g.el, true);
+    pulseScreen();
+    S.gLaunch = 0.6;
+    setTimeout(() => toast('ok', `${g.name} הובא לחזית`), 600);
+  }
+  function launchGame() {
+    if (S.page !== 4) return;
+    const g = GAMES[S.game];
+    sweep(g.el, true);
+    pulseScreen();
+    S.gLaunch = 1;
+    if (!g.running) {
+      setTimeout(() => {
+        g.running = true; g.since = Date.now();
+        g.el.classList.add('running');
+        if (GAMES[S.game] === g) gMeta.textContent = gameMeta(g);
+        toast('ok', `${g.name} נפתח`);
+      }, 1300);
+    } else bringGameForward(g);
+  }
+  setInterval(() => {
+    for (const g of GAMES) if (g.running) {
+      const sec = Math.floor((Date.now() - g.since) / 1000);
+      g.clockEl.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    }
+  }, 1000);
+  layoutDeck();
+  setGameText(true);
+  $('gPrev').onclick = () => { if (S.page !== 4) goTo(4); else stepGame(-1); };
+  $('gNext').onclick = () => { if (S.page !== 4) goTo(4); else stepGame(1); };
+
+  // ------------------------------------------------------------------ stats page
+  const cpu = Roller($('cpuNum')), mem = Roller($('memNum')), disk = Roller($('diskNum'));
+  function renderStats() {
+    cpu.set(S.stats.cpu); mem.set(S.stats.mem); disk.set(S.stats.disk);
+    $('rowCpu').classList.toggle('hot', S.stats.cpu > HOT * 100);
+    $('rowMem').classList.toggle('hot', S.stats.mem > HOT * 100);
+    $('rowDisk').classList.toggle('hot', S.stats.disk > HOT * 100);
+    $('memDetail').textContent = (15.9 * S.stats.mem / 100).toFixed(1) + '/15.9GB';
+  }
+  renderStats();
+  // mock telemetry: CPU wanders, and every so often a load spike holds for a
+  // few seconds so the heat state can be seen
+  let spikeUntil = 0, nextSpike = performance.now() + 9000;
+  setInterval(() => {
+    const s = S.stats, now = performance.now();
+    if (now > nextSpike) { spikeUntil = now + 4500; nextSpike = now + 16000; }
+    s.cpu = now < spikeUntil ? clamp(rand(88, 95), 0, 100) : clamp(s.cpu > 60 ? 32 : s.cpu + rand(-6, 6), 8, 48);
+    s.mem = clamp(s.mem + rand(-2, 2), 38, 62);
+    s.disk = clamp(s.disk + rand(-0.3, 0.3), 66, 70);
+    renderStats();
+  }, 1500);
+
+  // clock
+  const tick = () => { $('clock').textContent = new Date().toTimeString().slice(0, 5); };
+  tick(); setInterval(tick, 5000);
+
+  // ------------------------------------------------------------------ pages
+  const pageEls = PAGES.map((p) => $(p.id));
+  const dots = [...$('dots').children];
+  const segBtns = [...$('seg').children];
+  function goTo(i) {
+    i = clamp(i, 0, PAGES.length - 1);
+    if (i === S.page || S.burst) return;
+    if (HOLD.active) releasePower(true);
+    const dir = i > S.page ? 1 : -1;
+    pageEls[S.page].classList.remove('on');
+    pageEls[S.page].classList.add(dir > 0 ? 'leave-right' : 'leave-left');
+    setTimeout(() => pageEls.forEach((p) => p.classList.remove('leave-left', 'leave-right')), 600);
+    S.page = i;
+    pageEls[i].classList.add('on');
+    dots.forEach((d, k) => d.classList.toggle('on', k === i));
+    segBtns.forEach((d, k) => d.classList.toggle('on', k === i));
+    const t = nowS();
+    setFormation(PAGES[i].formation, t);
+    S.formedAt = t + 1.1;
+    pulseScreen();
+    setTimeout(pulseScreen, 1000);   // a second tap as the shape clicks into place
+  }
+  segBtns.forEach((b) => (b.onclick = () => goTo(+b.dataset.go)));
+
+  // drag to change page (RTL: the next page comes in from the left)
+  let dragX = null, dragged = false;
+  screen.addEventListener('pointerdown', (e) => {
+    dragged = false;
+    if (!e.target.closest('.vol, .ptile, .atile, .deck')) dragX = e.clientX;
+  });
+  window.addEventListener('pointermove', (e) => { if (dragX !== null && Math.abs(e.clientX - dragX) > 10) dragged = true; });
+  window.addEventListener('pointerup', (e) => {
+    if (dragX === null) return;
+    const dx = e.clientX - dragX;
+    dragX = null;
+    if (dx > 40) goTo(S.page + 1);
+    else if (dx < -40) goTo(S.page - 1);
+  });
+
+  window.__proto = {
+    S, HOLD, goTo, voiceDemo, setVolume, launch, POWER, ACTIONS,
+    press: (i) => pressPower(i), release: () => releasePower(),
+    GAMES, GHOLD, stepGame: (d) => stepGame(d), launchGame: () => launchGame(),
+  };
+})();
+</script>
+</body>
+</html>
