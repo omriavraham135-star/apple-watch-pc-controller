@@ -10,3 +10,5 @@ Payload/
 output/
 .DS_Store
 *.ipa
+.claude/worktrees/
+.superpowers/
