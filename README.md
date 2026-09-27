@@ -56,12 +56,20 @@
 
 ## הפעלה
 
+פעם אחת, בתיקיית הפרויקט (סביבה נפרדת, כדי לא לשנות את ה‑Python של המחשב):
+
 ```bash
-pip install -r requirements.txt
-py -m uvicorn watch_pc_controller.server:app --host 0.0.0.0 --port 8000
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt pytest httpx
 ```
 
-או לחיצה כפולה על `watch_pc_controller/start_server.bat`.
+ואז:
+
+```bash
+.venv\Scripts\python -m uvicorn watch_pc_controller.server:app --host 0.0.0.0 --port 8000
+```
+
+או לחיצה כפולה על `watch_pc_controller/start_server.bat` (משתמש ב‑`.venv` כשהיא קיימת).
 
 פתח את **http://localhost:8000** — שם יש שני שעונים: אחד מחובר למחשב באמת, והשני הדגמה שלא שולחת כלום, כדי שאפשר יהיה לתרגל גם את הכיבוי.
 
@@ -123,7 +131,7 @@ py -m uvicorn watch_pc_controller.server:app --host 0.0.0.0 --port 8000
 ## בדיקות
 
 ```bash
-py -m pytest tests/ -q                              # לוגיקת השרת
+.venv\Scripts\python -m pytest tests/ -q          # לוגיקת השרת
 node --test tests/browser/test_dashboard_nav.mjs    # ממשק, מול כרום אמיתי
 ```
 

@@ -3,3 +3,4 @@ comtypes>=1.4.16
 fastapi>=0.111.0
 uvicorn>=0.30.0
 psutil>=7.0.0
+claude-agent-sdk==0.2.160
