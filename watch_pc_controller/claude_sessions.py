@@ -1,8 +1,10 @@
 """Spoken conversations with Claude Code, one per open project session.
 
 A conversation owns one SDK client running in the project folder with the
-user's own settings. Everything it hears is translated into watch events,
-numbered, and kept, so a watch that drops off can ask for what it missed.
+user's own settings. One reader listens to it for the conversation's whole
+life, so turns Claude starts on its own (a background task finishing) are
+heard too. Everything it hears is translated into watch events, numbered,
+and kept, so a watch that drops off can ask for what it missed.
 """
 
 import asyncio
@@ -10,7 +12,7 @@ import time
 import uuid
 from typing import Callable, Optional
 
-from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, HookMatcher
+from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, HookMatcher, ResultMessage
 
 from watch_pc_controller.claude_bridge import PermissionBridge
 from watch_pc_controller.claude_events import translate
@@ -33,6 +35,14 @@ class ConversationBusy(Exception):
 
 class ConversationStartFailed(Exception):
     """Claude Code could not be started (not installed, not logged in, ...)."""
+
+
+class ConversationBroken(Exception):
+    """Claude Code stopped answering in this conversation; open it again."""
+
+
+GONE_MESSAGE = "Claude Code הפסיק לענות בשיחה הזו. פתח אותה שוב."
+MAX_READ_FAILURES = 3
 
 
 async def _keep_stream_open(input_data, tool_use_id, context):
@@ -67,7 +77,9 @@ class Conversation:
         self._events: list[dict] = []
         self._seq = 0
         self._listeners: set[asyncio.Queue] = set()
-        self._pump: Optional[asyncio.Task] = None
+        self._reader: Optional[asyncio.Task] = None
+        self._closing = False
+        self.alive = True
 
     # --------------------------------------------------------- events
 
@@ -83,7 +95,8 @@ class Conversation:
         elif kind in ("approval", "question"):
             self.state = "waiting"
         elif kind in ("answered", "expired") and self.state == "waiting":
-            self.state = "working"
+            # Claude can wait on two things at once; it is still waiting until both are answered.
+            self.state = "waiting" if self.bridge and self.bridge.pending() else "working"
         for queue in list(self._listeners):
             queue.put_nowait(item)
 
@@ -100,34 +113,69 @@ class Conversation:
 
     # --------------------------------------------------------- talking
 
+    def start(self) -> None:
+        self._reader = asyncio.create_task(self._read())
+
     async def send(self, text: str) -> None:
+        if not self.alive:
+            raise ConversationBroken(GONE_MESSAGE)
         if self.state != "idle":
             raise ConversationBusy()
         self.state = "working"
         self.publish({"type": "you", "text": text})
-        await self.client.query(text)
-        self._pump = asyncio.create_task(self._drain())
-
-    async def _drain(self) -> None:
         try:
-            async for message in self.client.receive_response():
-                for event in translate(message):
-                    self.publish(event)
-        except Exception as exc:          # the turn is lost, but the conversation stays usable
-            self.publish({"type": "error", "message": str(exc)})
-        finally:
+            await self.client.query(text)
+        except Exception as exc:          # the CLI is gone: say so, and do not stay "working" forever
             self.state = "idle"
-            self.last_activity = self._clock()
+            self.publish({"type": "error", "message": str(exc)})
+            raise ConversationBroken(str(exc)) from exc
+
+    async def _read(self) -> None:
+        failures = 0
+        cancelled = False
+        try:
+            while True:
+                try:
+                    async for message in self.client.receive_messages():
+                        failures = 0
+                        events = translate(message)
+                        if self.state == "idle" and any(e["type"] != "rate_limit" for e in events):
+                            self.state = "working"        # a turn Claude started on its own
+                        for event in events:
+                            self.publish(event)
+                        if isinstance(message, ResultMessage):
+                            self.state = "idle"
+                            self.last_activity = self._clock()
+                    break                                 # the stream ended: Claude Code exited
+                except asyncio.CancelledError:            # closing or shutting down, not a failure
+                    cancelled = True
+                    raise
+                except Exception as exc:                  # one bad message loses the turn, not the conversation
+                    failures += 1
+                    self.state = "idle"
+                    self.publish({"type": "error", "message": str(exc)})
+                    if failures >= MAX_READ_FAILURES:
+                        break
+        finally:
+            self.alive = False
+            self.state = "idle"
+            if not (self._closing or cancelled):
+                self.bridge.cancel_all()
+                self.publish({"type": "error", "message": GONE_MESSAGE})
 
     async def interrupt(self) -> None:
         self.bridge.cancel_all()
         await self.client.interrupt()
 
     async def close(self) -> None:
+        self._closing = True
+        self.alive = False
         self.bridge.cancel_all()
-        if self._pump and not self._pump.done():
-            self._pump.cancel()
-        await self.client.disconnect()
+        try:
+            await self.client.disconnect()
+        finally:
+            if self._reader and not self._reader.done():
+                self._reader.cancel()
 
 
 class ConversationManager:
@@ -142,7 +190,7 @@ class ConversationManager:
     async def open(self, project_path: str, session_id: Optional[str] = None) -> Conversation:
         await self.close_idle()
         for conv in self._conversations.values():     # the same session is already open: reuse it
-            if session_id and conv.project == project_path and conv.session_id == session_id:
+            if session_id and conv.alive and conv.project == project_path and conv.session_id == session_id:
                 return conv
         conv = Conversation(uuid.uuid4().hex[:12], project_path, session_id, self._clock)
         conv.bridge = PermissionBridge(emit=conv.publish, audit=self._audit, project=project_path)
@@ -152,6 +200,7 @@ class ConversationManager:
         except Exception as exc:
             raise ConversationStartFailed(str(exc)) from exc
         self._conversations[conv.id] = conv
+        conv.start()
         return conv
 
     def get(self, cid: str) -> Conversation:
@@ -173,6 +222,10 @@ class ConversationManager:
     async def close_idle(self) -> None:
         now = self._clock()
         stale = [cid for cid, c in self._conversations.items()
-                 if c.state == "idle" and now - c.last_activity > self._idle_close_s]
+                 if not c.alive or (c.state == "idle" and now - c.last_activity > self._idle_close_s)]
         for cid in stale:
+            await self.close(cid)
+
+    async def close_all(self) -> None:
+        for cid in list(self._conversations):
             await self.close(cid)

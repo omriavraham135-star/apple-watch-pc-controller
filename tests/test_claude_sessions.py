@@ -33,36 +33,66 @@ def result(text="סיימתי"):
     return ResultMessage(subtype="success", duration_ms=10, duration_api_ms=9, is_error=False, num_turns=1, session_id="s1", result=text)
 
 
-class FakeClient:
-    """Plays back one scripted list of messages per query."""
+_END = object()
 
-    def __init__(self, options, turns, fail_connect=False):
+
+class FakeClient:
+    """Stands in for ClaudeSDKClient.
+
+    Like the real one, it has a single message stream for its whole life. Each
+    query adds its scripted turn to that stream; push() adds a turn Claude
+    starts on its own (a background task finishing); exit() is the CLI dying.
+    """
+
+    def __init__(self, options, turns, fail_connect=False, fail_query=False):
         self.options = options
         self.turns = list(turns)
         self.queries = []
         self.fail_connect = fail_connect
+        self.fail_query = fail_query
         self.interrupted = False
         self.closed = False
+        self._inbox = asyncio.Queue()
 
     async def connect(self):
         if self.fail_connect:
             raise RuntimeError("Claude Code is not logged in")
 
     async def query(self, text):
+        if self.fail_query:
+            raise RuntimeError("Claude Code is not running")
         self.queries.append(text)
+        self.push(self.turns.pop(0) if self.turns else [])
 
-    async def receive_response(self):
-        for item in (self.turns.pop(0) if self.turns else []):
+    def push(self, turn):
+        for item in turn:
+            self._inbox.put_nowait(item)
+
+    def exit(self):
+        self._inbox.put_nowait(_END)
+
+    async def receive_messages(self):
+        while True:
+            item = await self._inbox.get()
+            if item is _END:
+                return
             if callable(item):
                 item = await item(self)
             if item is not None:
                 yield item
+
+    async def receive_response(self):
+        async for message in self.receive_messages():
+            yield message
+            if isinstance(message, ResultMessage):
+                return
 
     async def interrupt(self):
         self.interrupted = True
 
     async def disconnect(self):
         self.closed = True
+        self.exit()
 
 
 def manager_with(turns, **kw):
@@ -258,3 +288,100 @@ def test_summary_lists_open_conversations():
         return mgr.summary(), conv.id
     summary, cid = asyncio.run(scenario())
     assert summary == [{"id": cid, "project": "D:/p", "session_id": "s9", "state": "idle", "waiting": False}]
+
+
+def test_a_turn_claude_starts_by_itself_is_heard_and_the_next_reply_is_not_off_by_one():
+    """A finished background task wakes Claude into a turn nobody sent."""
+    async def scenario():
+        mgr, made = manager_with([[delta("הנה"), result("התשובה שלך")]])
+        conv = await mgr.open("D:/p")
+        made[0].push([SystemMessage(subtype="init", data={"session_id": "s1", "model": "m"}),
+                      delta("המשימה ברקע הסתיימה"), result("המשימה ברקע הסתיימה")])
+        for _ in range(200):
+            if any(e["type"] == "done" for e in conv.replay(0)):
+                break
+            await asyncio.sleep(0.005)
+        heard = [e["type"] for e in conv.replay(0)]
+        await settle(conv)
+        await conv.send("מה המצב?")
+        for _ in range(200):
+            if [e["type"] for e in conv.replay(0)].count("done") == 2:
+                break
+            await asyncio.sleep(0.005)
+        await settle(conv)
+        return heard, conv
+    heard, conv = asyncio.run(scenario())
+    assert heard == ["session", "text", "done"]
+    assert [e["text"] for e in conv.replay(0) if e["type"] == "done"] == ["המשימה ברקע הסתיימה", "התשובה שלך"]
+
+
+def test_waiting_lasts_while_any_request_is_open():
+    async def scenario():
+        async def ask_twice(fake):
+            ctx = ToolPermissionContext()
+            await asyncio.gather(fake.options.can_use_tool("Bash", {"command": "npm install"}, ctx),
+                                 fake.options.can_use_tool("Bash", {"command": "pip install x"}, ctx))
+            return None
+
+        mgr, _ = manager_with([[ask_twice, result()]])
+        conv = await mgr.open("D:/p")
+        await conv.send("תתקין")
+        for _ in range(200):
+            if len(conv.bridge.pending()) == 2:
+                break
+            await asyncio.sleep(0.005)
+        first, second = [e for e in conv.replay(0) if e["type"] == "approval"]
+        conv.bridge.answer(first["id"], {"allow": True})
+        after_first = (conv.state, mgr.waiting_projects())
+        conv.bridge.answer(second["id"], {"allow": True})
+        after_second = conv.state
+        await settle(conv)
+        return after_first, after_second
+    after_first, after_second = asyncio.run(scenario())
+    assert after_first == ("waiting", {"D:/p"})
+    assert after_second == "working"
+
+
+def test_a_failed_send_frees_the_conversation():
+    from watch_pc_controller.claude_sessions import ConversationBroken
+
+    async def scenario():
+        mgr, _ = manager_with([], fail_query=True)
+        conv = await mgr.open("D:/p")
+        with pytest.raises(ConversationBroken):
+            await conv.send("x")
+        return conv
+    conv = asyncio.run(scenario())
+    assert conv.state == "idle"
+    assert conv.replay(0)[-1]["type"] == "error"
+
+
+def test_when_claude_code_exits_the_conversation_says_so_and_refuses_messages():
+    from watch_pc_controller.claude_sessions import ConversationBroken
+
+    async def scenario():
+        mgr, made = manager_with([])
+        conv = await mgr.open("D:/p")
+        made[0].exit()
+        for _ in range(200):
+            if not conv.alive:
+                break
+            await asyncio.sleep(0.005)
+        with pytest.raises(ConversationBroken):
+            await conv.send("x")
+        await mgr.close_idle()                      # a dead conversation is cleaned up at once
+        return mgr, conv
+    mgr, conv = asyncio.run(scenario())
+    assert conv.replay(0)[-1]["type"] == "error"
+    assert mgr.summary() == []
+
+
+def test_close_all_closes_every_conversation():
+    async def scenario():
+        mgr, made = manager_with([])
+        await mgr.open("D:/a")
+        await mgr.open("D:/b")
+        await mgr.close_all()
+        return mgr, made
+    mgr, made = asyncio.run(scenario())
+    assert mgr.summary() == [] and all(c.closed for c in made)
