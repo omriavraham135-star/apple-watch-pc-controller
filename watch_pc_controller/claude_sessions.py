@@ -16,6 +16,7 @@ from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, HookMatcher, R
 
 from watch_pc_controller.claude_bridge import PermissionBridge
 from watch_pc_controller.claude_events import translate
+from watch_pc_controller.claude_risk import classify
 
 BUFFER_SIZE = 500
 
@@ -45,9 +46,20 @@ GONE_MESSAGE = "Claude Code הפסיק לענות בשיחה הזו. פתח או
 MAX_READ_FAILURES = 3
 
 
-async def _keep_stream_open(input_data, tool_use_id, context):
-    # The Python SDK needs some PreToolUse hook registered for can_use_tool
-    # to be consulted while streaming; this one changes nothing.
+async def _destructive_goes_to_the_watch(input_data, tool_use_id, context):
+    """In acceptEdits mode Claude Code deletes files inside the project (rm) without
+    asking anyone, so can_use_tool never hears of it. Destructive commands are
+    sent back through the permission flow, where the watch asks for a long hold.
+
+    (The Python SDK also needs some PreToolUse hook registered for can_use_tool
+    to be consulted while streaming; this hook is that one.)"""
+    tool = input_data.get("tool_name")
+    if tool in ("Bash", "PowerShell") and classify(tool, input_data.get("tool_input") or {}) == "destructive":
+        return {"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": "Destructive commands need the user's approval on the watch.",
+        }}
     return {"continue_": True}
 
 
@@ -60,7 +72,7 @@ def build_options(project_path: str, session_id: Optional[str], can_use_tool) ->
         include_partial_messages=True,
         setting_sources=["user", "project", "local"],
         system_prompt={"type": "preset", "preset": "claude_code", "append": WATCH_PROMPT},
-        hooks={"PreToolUse": [HookMatcher(matcher=None, hooks=[_keep_stream_open])]},
+        hooks={"PreToolUse": [HookMatcher(matcher=None, hooks=[_destructive_goes_to_the_watch])]},
     )
 
 

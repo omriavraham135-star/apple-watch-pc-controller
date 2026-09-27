@@ -45,6 +45,22 @@ def test_only_a_real_yes_approves(payload):
     assert isinstance(run(scenario()), PermissionResultDeny)
 
 
+def test_a_destructive_command_is_never_remembered():
+    """It is always sent back to the watch, so 'always' would be a promise we do not keep."""
+    rule = PermissionUpdate(type="addRules", rules=[PermissionRuleValue(tool_name="Bash", rule_content="rm junk.txt")],
+                            behavior="allow", destination="localSettings")
+
+    async def scenario():
+        bridge, events, _ = make_bridge()
+        task = asyncio.create_task(bridge.can_use_tool("Bash", {"command": "rm junk.txt"}, ToolPermissionContext(suggestions=[rule])))
+        await asyncio.sleep(0)
+        request = events[0]
+        bridge.answer(request["id"], {"allow": True, "always": True})
+        return request, await task
+    request, result = run(scenario())
+    assert request["can_remember"] is False and result.updated_permissions is None
+
+
 def test_always_never_widens_the_folders_claude_can_reach():
     """Spec 3.3: Claude stays in the project; 'always' may only remember a rule."""
     widen = PermissionUpdate(type="addDirectories", directories=["C:\\Users"], destination="localSettings")

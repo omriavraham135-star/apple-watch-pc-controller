@@ -125,6 +125,32 @@ def test_build_options_uses_the_users_own_setup():
     assert "PreToolUse" in opts.hooks
 
 
+def _pre_tool_use(tool, tool_input):
+    hook = build_options("D:/p", None, can_use_tool=None).hooks["PreToolUse"][0].hooks[0]
+    data = {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input, "tool_use_id": "t1"}
+    return asyncio.run(hook(data, "t1", {"signal": None}))
+
+
+@pytest.mark.parametrize("tool,command", [
+    ("Bash", "rm junk2.txt"),                      # acceptEdits lets Claude Code run this without asking
+    ("Bash", "rm -rf build"),
+    ("PowerShell", "Remove-Item junk1.txt"),
+    ("Bash", "git push star main"),
+])
+def test_destructive_commands_are_always_sent_to_the_watch(tool, command):
+    out = _pre_tool_use(tool, {"command": command})
+    assert out["hookSpecificOutput"]["permissionDecision"] == "ask"
+
+
+@pytest.mark.parametrize("tool,tool_input", [
+    ("Bash", {"command": "git status"}),
+    ("Bash", {"command": "npm install"}),
+    ("Edit", {"file_path": "D:/p/a.py"}),
+])
+def test_other_requests_follow_the_normal_flow(tool, tool_input):
+    assert "hookSpecificOutput" not in _pre_tool_use(tool, tool_input)
+
+
 def test_new_conversation_does_not_resume():
     assert build_options("D:/p", None, can_use_tool=None).resume is None
 

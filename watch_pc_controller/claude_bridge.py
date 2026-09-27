@@ -106,7 +106,8 @@ class PermissionBridge:
         return all(_within(self._project, p) for p in _ABSOLUTE_PATH.findall(command))
 
     async def _approve(self, tool_name, tool_input, context, risk):
-        remember = self._remember_suggestions(context)
+        # A destructive command always comes back to the watch, so it is never remembered.
+        remember = [] if risk == "destructive" else self._remember_suggestions(context)
         request = {
             "type": "approval",
             "id": uuid.uuid4().hex,
