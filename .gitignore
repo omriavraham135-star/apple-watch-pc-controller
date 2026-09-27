@@ -12,3 +12,5 @@ output/
 *.ipa
 .claude/worktrees/
 .superpowers/
+watch_pc_controller/devices.json
+watch_pc_controller/devices.json.tmp
