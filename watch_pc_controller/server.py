@@ -1,12 +1,14 @@
 import os
 import socket
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
 from watch_pc_controller.actions import ActionRegistry, UnknownActionError
+from watch_pc_controller.auth import PAIR_ATTEMPTS_PER_MINUTE, AuthMiddleware, RateLimiter, client_is_local
+from watch_pc_controller.pairing import CODE_TTL_SECONDS, PairingError, PairingStore
 from watch_pc_controller.nlp_parser import parse_voice_command
 from watch_pc_controller.power_controller import PowerController, UnknownPowerActionError
 from watch_pc_controller.system_stats import get_stats
@@ -21,6 +23,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Paired devices only. The store and limiter are looked up per request, so
+# tests can swap them without rebuilding the app.
+pairing_store = PairingStore(os.path.join(os.path.dirname(__file__), "devices.json"))
+pair_limiter = RateLimiter(PAIR_ATTEMPTS_PER_MINUTE)
+app.add_middleware(AuthMiddleware, get_store=lambda: pairing_store, get_limiter=lambda: pair_limiter)
 
 volume_ctrl = VolumeController()
 power_ctrl = PowerController()
@@ -48,6 +56,17 @@ class DirectVolumeRequest(BaseModel):
 
 class PowerRequest(BaseModel):
     action: str
+
+
+class PairRequest(BaseModel):
+    code: str
+    device_name: str = "device"
+
+
+def _require_local(request: Request) -> None:
+    """Some actions belong to whoever is sitting at the PC."""
+    if not client_is_local(request.client.host if request.client else None):
+        raise HTTPException(status_code=403, detail="אפשר לעשות את זה רק מהמחשב עצמו")
 
 
 # --------------------------------------------------------------------------
@@ -173,6 +192,41 @@ def run_action(action_id: str):
 
 
 # --------------------------------------------------------------------------
+# Pairing
+# --------------------------------------------------------------------------
+
+@app.post("/api/pair/code")
+def new_pair_code(request: Request):
+    _require_local(request)
+    code = pairing_store.create_code()
+    print(f"[pairing] code {code} (valid {CODE_TTL_SECONDS // 60} minutes)")
+    return {"code": code, "expires_in": CODE_TTL_SECONDS}
+
+
+@app.post("/api/pair")
+def pair_device(req: PairRequest):
+    try:
+        token = pairing_store.redeem(req.code, req.device_name)
+    except PairingError:
+        raise HTTPException(status_code=403, detail="הקוד שגוי או שפג תוקפו")
+    return {"token": token}
+
+
+@app.get("/api/devices")
+def list_devices(request: Request):
+    _require_local(request)
+    return {"devices": pairing_store.list_devices()}
+
+
+@app.delete("/api/devices/{device_id}")
+def revoke_device(device_id: str, request: Request):
+    _require_local(request)
+    if not pairing_store.revoke(device_id):
+        raise HTTPException(status_code=404, detail="אין מכשיר כזה")
+    return {"status": "revoked"}
+
+
+# --------------------------------------------------------------------------
 # Dashboard
 # --------------------------------------------------------------------------
 
@@ -193,6 +247,14 @@ def orb_script():
 def watch_ui_script():
     """The watch interface, instantiated once per watch on the page."""
     return _serve_script("watch-ui.js")
+
+
+
+@app.get("/pair", response_class=HTMLResponse)
+def pair_page():
+    path = os.path.join(os.path.dirname(__file__), "pair.html")
+    with open(path, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 
 @app.get("/", response_class=HTMLResponse)
