@@ -13,6 +13,24 @@
 (function (global) {
   'use strict';
 
+  // ------------------------------------------------------------ talking to the PC
+
+  // Every API call carries this device's pairing token. A refusal means the
+  // device was never paired or was revoked: send it to the pairing page.
+  function pcFetch(url, opts) {
+    opts = opts || {};
+    let token = null;
+    try { token = localStorage.getItem('pcToken'); } catch (e) { /* private mode */ }
+    const headers = Object.assign({}, opts.headers || {});
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return fetch(url, Object.assign({}, opts, { headers: headers })).then(function (res) {
+      if (res.status === 401) global.pcGoPair();
+      return res;
+    });
+  }
+  global.pcFetch = pcFetch;
+  global.pcGoPair = function () { global.location.href = '/pair'; };
+
   const PAGE_NAMES = ['קול', 'חשמל', 'מצב', 'כפתורים'];
 
   // -------------------------------------------------------------- icon set
@@ -187,7 +205,7 @@
       if (!this.live) return;
       clearTimeout(this.volumePost);
       this.volumePost = setTimeout(() => {
-        fetch('/api/volume', {
+        pcFetch('/api/volume', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ volume: v }),
@@ -269,7 +287,7 @@
         return;
       }
 
-      fetch('/api/command', {
+      pcFetch('/api/command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text }),
@@ -492,7 +510,7 @@
       }
 
       this.log('power: ' + a.action + ' …');
-      fetch('/api/power', {
+      pcFetch('/api/power', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: a.action }),
@@ -626,7 +644,7 @@
         return;
       }
 
-      fetch('/api/actions/' + encodeURIComponent(a.id), { method: 'POST' })
+      pcFetch('/api/actions/' + encodeURIComponent(a.id), { method: 'POST' })
         .then((r) => {
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.json();

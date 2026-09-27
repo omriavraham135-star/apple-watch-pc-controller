@@ -1002,14 +1002,14 @@
     // ------------------------------------------------------------ shared data
 
     function loadOnce(url, apply, label) {
-      fetch(url)
+      pcFetch(url)
         .then(function (r) { return r.json(); })
         .then(function (d) { watches.forEach(function (w) { apply(w, d); }); })
         .catch(function () { log('could not load ' + label, 'err'); });
     }
 
     loadOnce('/api/power', function (w, d) { w.renderPower(d.actions || []); }, 'power actions');
-    fetch('/api/actions')
+    pcFetch('/api/actions')
       .then(function (r) { return r.json(); })
       .then(function (d) {
         watches.forEach(function (w) { w.renderActions(d.actions || []); });
@@ -1018,7 +1018,7 @@
       .catch(function () { log('could not load actions', 'err'); });
 
     function pollStatus() {
-      fetch('/api/status')
+      pcFetch('/api/status')
         .then(function (r) { return r.json(); })
         .then(function (s) {
           watches.forEach(function (w) {
@@ -1030,14 +1030,14 @@
     }
 
     function pollStats() {
-      fetch('/api/stats')
+      pcFetch('/api/stats')
         .then(function (r) { return r.json(); })
         .then(function (s) { watches.forEach(function (w) { w.renderStats(s); }); })
         .catch(function () { /* the status poll already reports connectivity */ });
     }
 
     function pollActionStatuses() {
-      fetch('/api/actions/status')
+      pcFetch('/api/actions/status')
         .then(function (r) { return r.json(); })
         .then(function (d) {
           watches.forEach(function (w) { w.setActionStatuses(d.statuses || {}); });
