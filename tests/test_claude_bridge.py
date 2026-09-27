@@ -28,6 +28,43 @@ def test_read_only_command_passes_without_asking():
     assert events == []
 
 
+def test_a_command_that_ran_without_asking_is_still_in_the_audit_log():
+    bridge, _, audits = make_bridge()
+    run(bridge.can_use_tool("Bash", {"command": "git status"}, ToolPermissionContext()))
+    assert audits == [{"project": "Robox", "tool": "Bash", "command": "git status", "risk": "read", "decision": "auto"}]
+
+
+@pytest.mark.parametrize("payload", [{"allow": "false"}, {"allow": "true"}, {"allow": 1}, {}, {"allow": None}])
+def test_only_a_real_yes_approves(payload):
+    async def scenario():
+        bridge, events, _ = make_bridge()
+        task = asyncio.create_task(bridge.can_use_tool("Bash", {"command": "npm install"}, ToolPermissionContext()))
+        await asyncio.sleep(0)
+        bridge.answer(events[0]["id"], payload)
+        return await task
+    assert isinstance(run(scenario()), PermissionResultDeny)
+
+
+def test_always_never_widens_the_folders_claude_can_reach():
+    """Spec 3.3: Claude stays in the project; 'always' may only remember a rule."""
+    widen = PermissionUpdate(type="addDirectories", directories=["C:\\Users"], destination="localSettings")
+    rule = PermissionUpdate(type="addRules", rules=[PermissionRuleValue(tool_name="Read", rule_content="C:\\Users\\**")],
+                            behavior="allow", destination="localSettings")
+
+    async def scenario(suggestions):
+        bridge, events, _ = make_bridge()
+        task = asyncio.create_task(bridge.can_use_tool("Bash", {"command": "npm test"}, ToolPermissionContext(suggestions=suggestions)))
+        await asyncio.sleep(0)
+        request = events[0]
+        bridge.answer(request["id"], {"allow": True, "always": True})
+        return request, await task
+
+    request, result = run(scenario([widen]))
+    assert request["can_remember"] is False and result.updated_permissions is None
+    request, result = run(scenario([widen, rule]))
+    assert result.updated_permissions == [rule]
+
+
 def test_approval_waits_and_allows():
     async def scenario():
         bridge, events, audits = make_bridge()
@@ -174,6 +211,11 @@ def make_project_bridge():
     ("Bash", {"command": r"cat C:\Users\omria\.ssh\id_rsa"}),
     ("PowerShell", {"command": r"Get-Content ..\..\secrets.txt"}),
     ("Bash", {"command": "ls ~"}),
+    ("Bash", {"command": "cat /c/Users/omria/.ssh/id_rsa"}),           # Git Bash spelling of C:\
+    ("Bash", {"command": "cat $HOME/.ssh/id_rsa"}),
+    ("PowerShell", {"command": r"Get-Content $env:USERPROFILE\.ssh\id_rsa"}),
+    ("PowerShell", {"command": "Get-ChildItem Env:"}),                  # PowerShell drives
+    ("PowerShell", {"command": r"Get-ChildItem HKLM:\Software"}),
 ])
 def test_reading_outside_the_project_asks(tool, tool_input):
     async def scenario():

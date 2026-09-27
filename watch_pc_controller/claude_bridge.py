@@ -25,6 +25,11 @@ DEFAULT_TIMEOUT_S = 30 * 60
 _PATH_KEYS = ("file_path", "path", "notebook_path")
 # Drive paths (C:\x, D:/x) and UNC paths (\\server\share) inside a command.
 _ABSOLUTE_PATH = re.compile(r"(?<![\w/\\])(?:[A-Za-z]:[\\/]|\\\\)[^\s\"'|;&<>]*")
+# A word starting with / is outside the project: Git Bash spells C:\ as /c/.
+_ROOTED = re.compile(r"(?:^|[\s\"'=])/")
+# PowerShell drives other than the file system: Env:, HKLM:, Cert:, Variable: ...
+_PS_DRIVE = re.compile(r"(?<![\w\\/])[A-Za-z]{2,}:")
+_SHELL_TOOLS = {"Bash", "PowerShell"}
 
 
 def _within(root: str, path: str) -> bool:
@@ -81,6 +86,9 @@ class PermissionBridge:
         risk = classify(tool_name, tool_input)
         if risk == "read":
             if self._inside_project(tool_input, context):
+                if tool_name in _SHELL_TOOLS:     # every command that runs is in the log, asked or not
+                    self._audit({"project": self._project, "tool": tool_name,
+                                 "command": str(tool_input.get("command") or ""), "risk": "read", "decision": "auto"})
                 return PermissionResultAllow(updated_input=tool_input)
             risk = "normal"                   # reading outside the project waits for the watch
         return await self._approve(tool_name, tool_input, context, risk)
@@ -93,7 +101,7 @@ class PermissionBridge:
             if value and not _within(self._project, value):
                 return False
         command = str(tool_input.get("command") or "")
-        if ".." in command or "~" in command:
+        if ".." in command or "~" in command or _ROOTED.search(command) or _PS_DRIVE.search(command):
             return False
         return all(_within(self._project, p) for p in _ABSOLUTE_PATH.findall(command))
 
@@ -115,8 +123,8 @@ class PermissionBridge:
         if answer is None:
             self._audit({**entry, "decision": "expired"})
             return PermissionResultDeny(message="The user did not answer in time. Stop here and wait for them.", interrupt=True)
-        if answer.get("allow"):
-            perms = remember if answer.get("always") else None
+        if answer.get("allow") is True:           # only a real yes: "false", 1 or a missing field is a no
+            perms = remember if answer.get("always") is True else None
             self._audit({**entry, "decision": "allowed", "always": bool(perms)})
             return PermissionResultAllow(updated_input=tool_input, updated_permissions=perms or None)
         reason = str(answer.get("reason") or "").strip()
@@ -148,8 +156,12 @@ class PermissionBridge:
 
     @staticmethod
     def _remember_suggestions(context) -> list:
-        """'Always in this project' means the rules Claude Code offers for local settings."""
-        return [s for s in (getattr(context, "suggestions", None) or []) if getattr(s, "destination", None) == "localSettings"]
+        """'Always in this project' means the rules Claude Code offers for local settings.
+
+        Only rules: a suggestion to add a directory would let Claude reach past
+        the project folder from then on (spec 3.3)."""
+        return [s for s in (getattr(context, "suggestions", None) or [])
+                if getattr(s, "destination", None) == "localSettings" and getattr(s, "type", None) == "addRules"]
 
     # --------------------------------------------------------- waiting
 
@@ -160,6 +172,7 @@ class PermissionBridge:
         try:
             return await asyncio.wait_for(asyncio.shield(future), self._timeout)
         except asyncio.TimeoutError:
+            self._pending.pop(request["id"], None)    # gone before anyone hears it expired
             self._emit({"type": "expired", "id": request["id"]})
             return None
         finally:
@@ -169,7 +182,10 @@ class PermissionBridge:
         entry = self._pending.get(request_id)
         if entry is None or entry[1].done():
             return False
-        entry[1].set_result(payload or {})
+        # Leave the pending list before announcing the answer, so whoever hears
+        # "answered" sees only the requests that are still open.
+        self._pending.pop(request_id, None)
+        entry[1].set_result(payload if isinstance(payload, dict) else {})
         self._emit({"type": "answered", "id": request_id})
         return True
 
