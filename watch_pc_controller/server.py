@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from watch_pc_controller.actions import ActionRegistry, UnknownActionError
 from watch_pc_controller.auth import PAIR_ATTEMPTS_PER_MINUTE, AuthMiddleware, RateLimiter, client_is_local
+from watch_pc_controller.claude_api import router as claude_router
 from watch_pc_controller.pairing import CODE_TTL_SECONDS, PairingError, PairingStore
 from watch_pc_controller.nlp_parser import parse_voice_command
 from watch_pc_controller.power_controller import PowerController, UnknownPowerActionError
@@ -29,6 +30,7 @@ app.add_middleware(
 pairing_store = PairingStore(os.path.join(os.path.dirname(__file__), "devices.json"))
 pair_limiter = RateLimiter(PAIR_ATTEMPTS_PER_MINUTE)
 app.add_middleware(AuthMiddleware, get_store=lambda: pairing_store, get_limiter=lambda: pair_limiter)
+app.include_router(claude_router)
 
 volume_ctrl = VolumeController()
 power_ctrl = PowerController()
