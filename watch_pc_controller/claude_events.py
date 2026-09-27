@@ -21,6 +21,17 @@ from claude_agent_sdk import (
 
 _INTERRUPTED = {"aborted_streaming", "aborted_tools"}
 
+# Claude Code reports these on the reply itself, with English text meant for a
+# terminal. The watch says what to do instead (spec section 7).
+_ERRORS = {
+    "authentication_failed": "צריך להתחבר ל‑Claude Code במחשב",
+    "billing_error": "יש בעיה בחיוב של חשבון Claude. בדוק במחשב",
+    "rate_limit": "הגעת למגבלת השימוש של Claude. נסה שוב מאוחר יותר",
+    "invalid_request": "Claude לא הצליח לטפל בבקשה הזו",
+    "server_error": "השרתים של Claude לא זמינים כרגע. נסה שוב עוד מעט",
+    "unknown": "משהו השתבש אצל Claude. הפרטים בשיחה במחשב",
+}
+
 
 def _short(path) -> str:
     return os.path.basename(str(path).replace("\\", "/")) if path else ""
@@ -70,6 +81,8 @@ def translate(message) -> list[dict]:
     if isinstance(message, AssistantMessage):
         if message.parent_tool_use_id:          # a subagent's inner turns stay on the PC
             return []
+        if message.error:
+            return [{"type": "error", "code": message.error, "message": _ERRORS.get(message.error, _ERRORS["unknown"])}]
         events = []
         for block in message.content:
             if isinstance(block, ToolUseBlock):

@@ -12,6 +12,7 @@ from claude_agent_sdk import (
     ToolUseBlock,
     UserMessage,
 )
+import pytest
 from claude_agent_sdk.types import RateLimitInfo, ThinkingBlock
 
 from watch_pc_controller.claude_events import tool_label, translate
@@ -44,6 +45,18 @@ def test_assistant_tool_use_becomes_a_labelled_tool_event():
 def test_assistant_text_block_is_kept_for_reconciliation():
     msg = AssistantMessage(content=[TextBlock(text="סיימתי"), ThinkingBlock(thinking="x", signature="y")], model="m")
     assert translate(msg) == [{"type": "text_block", "text": "סיימתי"}]
+
+
+def test_not_logged_in_says_so_in_hebrew():
+    msg = AssistantMessage(content=[TextBlock(text="Invalid API key · Please run /login")], model="", error="authentication_failed")
+    assert translate(msg) == [{"type": "error", "code": "authentication_failed",
+                               "message": "צריך להתחבר ל‑Claude Code במחשב"}]
+
+
+@pytest.mark.parametrize("code", ["billing_error", "rate_limit", "invalid_request", "server_error", "unknown"])
+def test_every_assistant_error_becomes_an_error_event(code):
+    [event] = translate(AssistantMessage(content=[TextBlock(text="x")], model="", error=code))
+    assert event["type"] == "error" and event["code"] == code and event["message"]
 
 
 def test_subagent_messages_are_quiet():
