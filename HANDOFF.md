@@ -231,10 +231,9 @@ requests. A test spies on `fetch` to prove it.
 
 ## Known open items
 
-1. **The server has no authentication.** It binds `0.0.0.0`. Anyone on the home
-   network can change the volume or shut the machine down. Raised several times,
-   never addressed. Actions are at least run by id only — a command string from
-   the network is never executed.
+1. **Pairing is in place** (`pairing.py`, `auth.py`, `/pair`). Loopback is
+   exempt on purpose. The native watch app (`PCClient.swift`) does not send
+   a token yet; it needs a pairing screen before it can talk to a paired server.
 2. `macos-dl\` (18 GB) and `unlocker\` can be deleted.
 3. The README's top block is a temporary VM helper; move it into docs when done.
 
