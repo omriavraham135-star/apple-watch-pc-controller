@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -23,16 +24,43 @@ from watch_pc_controller.claude_projects import (
     project_roots,
     resolve_project,
 )
-from watch_pc_controller.claude_sessions import ConversationBusy, ConversationManager, ConversationStartFailed
+from watch_pc_controller.claude_sessions import (
+    ConversationBroken,
+    ConversationBusy,
+    ConversationManager,
+    ConversationStartFailed,
+)
 
 router = APIRouter(prefix="/api/claude")
 
 _audit = AuditLog(os.path.join(os.path.dirname(__file__), "claude_audit.jsonl"))
 _manager = ConversationManager(audit=_audit.record)
 
+IDLE_SWEEP_S = 60
+
 
 def get_manager() -> ConversationManager:
     return _manager
+
+
+async def sweep_idle(manager: ConversationManager, interval_s: float = IDLE_SWEEP_S) -> None:
+    """Close conversations nobody has used for a while, so their Claude Code processes end."""
+    while True:
+        await asyncio.sleep(interval_s)
+        try:
+            await manager.close_idle()
+        except Exception as exc:          # a failed sweep must not stop the next one
+            print(f"[claude] closing idle conversations failed: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(app):
+    sweeper = asyncio.create_task(sweep_idle(get_manager()))
+    try:
+        yield
+    finally:
+        sweeper.cancel()
+        await get_manager().close_all()
 
 
 class NewProject(BaseModel):
@@ -115,14 +143,21 @@ async def send_message(cid: str, req: Message):
         await conv.send(req.text)
     except ConversationBusy:
         raise HTTPException(status_code=409, detail="Claude עדיין עובד על ההודעה הקודמת")
+    except ConversationBroken as exc:
+        raise HTTPException(status_code=503, detail=f"Claude Code לא זמין בשיחה הזו: {exc}")
     return {"status": "accepted"}
 
 
 @router.post("/conversations/{cid}/answers")
 async def answer(cid: str, request: Request):
-    body = await request.json()
-    request_id = body.pop("request_id", None)
-    if not request_id or not _conversation(cid).bridge.answer(request_id, body):
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    if not isinstance(body, dict) or not isinstance(body.get("request_id"), str):
+        raise HTTPException(status_code=422, detail="תשובה לא תקינה")
+    request_id = body.pop("request_id")
+    if not _conversation(cid).bridge.answer(request_id, body):
         raise HTTPException(status_code=404, detail="הבקשה הזו כבר לא מחכה")
     return {"status": "answered"}
 

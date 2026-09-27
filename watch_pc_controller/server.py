@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from watch_pc_controller.actions import ActionRegistry, UnknownActionError
 from watch_pc_controller.auth import PAIR_ATTEMPTS_PER_MINUTE, AuthMiddleware, RateLimiter, request_is_local
+from watch_pc_controller.claude_api import lifespan as claude_lifespan
 from watch_pc_controller.claude_api import router as claude_router
 from watch_pc_controller.pairing import CODE_TTL_SECONDS, PairingError, PairingStore
 from watch_pc_controller.nlp_parser import parse_voice_command
@@ -14,7 +15,7 @@ from watch_pc_controller.power_controller import PowerController, UnknownPowerAc
 from watch_pc_controller.system_stats import get_stats
 from watch_pc_controller.volume_controller import VolumeController
 
-app = FastAPI(title="Apple Watch PC Controller API", version="2.0.0")
+app = FastAPI(title="Apple Watch PC Controller API", version="2.0.0", lifespan=claude_lifespan)
 
 # No CORS: the dashboard is served from this server and the watch app is not a
 # browser, so nothing legitimate is cross-origin. Allowing it would let any web

@@ -129,3 +129,65 @@ def test_stream_sends_keepalives_when_quiet():
         await stream.aclose()
         return chunk
     assert asyncio.run(scenario()).startswith(": keep-alive")
+
+
+def test_a_message_claude_code_cannot_take_is_503_not_500(roots, monkeypatch):
+    monkeypatch.setattr(claude_api, "_manager",
+                        ConversationManager(client_factory=lambda opts: FakeClient(opts, [], fail_query=True)))
+
+    async def scenario(client):
+        cid = (await client.post("/api/claude/conversations", json={"project": "Robox"})).json()["id"]
+        first = await client.post(f"/api/claude/conversations/{cid}/messages", json={"text": "היי"})
+        again = await client.post(f"/api/claude/conversations/{cid}/messages", json={"text": "שוב"})
+        return first.status_code, again.status_code
+
+    assert with_client(scenario) == (503, 503)       # not a 409: it is not busy, it is broken
+
+
+@pytest.mark.parametrize("body", [[1, 2], "yes", {"allow": True}, {"request_id": 5}])
+def test_a_malformed_answer_is_422(roots, turns, body):
+    cid = call("POST", "/api/claude/conversations", {"project": "Robox"}).json()["id"]
+    assert call("POST", f"/api/claude/conversations/{cid}/answers", body).status_code == 422
+
+
+def test_the_sweeper_closes_idle_conversations():
+    async def scenario():
+        now, made = [0.0], []
+
+        def factory(opts):
+            made.append(FakeClient(opts, []))
+            return made[-1]
+
+        mgr = ConversationManager(client_factory=factory, idle_close_s=900, clock=lambda: now[0])
+        await mgr.open("D:/p")
+        now[0] = 901
+        sweeper = asyncio.create_task(claude_api.sweep_idle(mgr, interval_s=0.01))
+        for _ in range(100):
+            if not mgr.summary():
+                break
+            await asyncio.sleep(0.01)
+        sweeper.cancel()
+        return mgr, made[0]
+    mgr, client = asyncio.run(scenario())
+    assert mgr.summary() == [] and client.closed
+
+
+def test_shutting_the_server_down_closes_every_conversation(monkeypatch):
+    async def scenario():
+        mgr = ConversationManager(client_factory=lambda opts: FakeClient(opts, []))
+        monkeypatch.setattr(claude_api, "_manager", mgr)
+        async with claude_api.lifespan(server.app):
+            await mgr.open("D:/a")
+            await mgr.open("D:/b")
+        return mgr
+    assert asyncio.run(scenario()).summary() == []
+
+
+def test_the_server_app_closes_conversations_when_it_stops(monkeypatch):
+    async def scenario():
+        mgr = ConversationManager(client_factory=lambda opts: FakeClient(opts, []))
+        monkeypatch.setattr(claude_api, "_manager", mgr)
+        async with server.app.router.lifespan_context(server.app):
+            await mgr.open("D:/a")
+        return mgr
+    assert asyncio.run(scenario()).summary() == []
