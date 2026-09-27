@@ -292,6 +292,169 @@
   .gname { top: 262px; font-size: 12.5px; font-weight: 500; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gmeta { top: 281px; font-size: 10px; color: var(--ink-faint); letter-spacing: .3px; }
 
+  /* ------------------------------------------------------------ claude page */
+  #pClaude { --cl: 226,150,120; }
+  .cl-pill {
+    position: absolute; top: 33px; left: 50%; transform: translateX(-50%); height: 24px; max-width: 190px; padding: 0 12px;
+    border-radius: 12px; display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--ink-dim);
+    cursor: pointer; white-space: nowrap; z-index: 3; transition: opacity .7s var(--lux);
+  }
+  .cl-pill b { font-weight: 500; direction: ltr; overflow: hidden; text-overflow: ellipsis; }
+  .cl-pill i { flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--cl),.95); box-shadow: 0 0 6px rgba(var(--cl),.7); }
+  .cl-pill .chev { opacity: .55; font-size: 9px; }
+  .cl-fade { transition: opacity .7s var(--lux); }
+  .cl-fade.off { opacity: 0 !important; pointer-events: none !important; }
+
+  .cl-orbhit { position: absolute; border-radius: 50%; cursor: pointer; z-index: 2; }
+  .cl-coach {
+    position: absolute; border-radius: 50%; pointer-events: none; z-index: 3; opacity: 0;
+    border: 1px solid rgba(var(--cl),.6); transition: opacity .6s var(--lux);
+  }
+  .cl-coach.on { animation: coach 2.4s var(--lux) infinite; }
+  @keyframes coach { 0% { transform: scale(.9); opacity: .85; } 100% { transform: scale(1.4); opacity: 0; } }
+
+  .cl-label {
+    position: absolute; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 500; letter-spacing: 2.6px;
+    color: rgba(var(--cl),.92); transition: opacity .5s var(--lux), transform .6s var(--lux);
+  }
+  .cl-label.swap { opacity: 0; transform: translateY(3px); }
+
+  .cl-cap {
+    position: absolute; left: 20px; right: 20px; height: 84px; overflow: hidden; text-align: center;
+    font-size: 15px; font-weight: 500; line-height: 1.4; letter-spacing: .1px;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
+            mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 12px), transparent 100%);
+  }
+  .cl-cap .inner { padding: 6px 0 12px; transition: transform .8s var(--lux); }
+  .cl-cap .w {
+    display: inline-block; margin: 0 .1em; opacity: 0; filter: blur(6px); transform: translateY(5px);
+    transition: opacity .6s var(--lux), filter .6s var(--lux), transform .8s var(--lux), color .35s, text-shadow .35s;
+  }
+  .cl-cap .w.on { opacity: .8; filter: none; transform: none; }
+  .cl-cap .w.now { opacity: 1; color: #fff; text-shadow: 0 0 14px rgba(var(--cl),.6); }
+  .cl-cap.you .w.on { opacity: .96; color: rgba(255,255,255,.96); }
+  .cl-cap .ghost { font-size: 12px; font-weight: 400; color: var(--ink-faint); font-style: italic; letter-spacing: .2px; }
+  .cl-cap .did { display: block; margin-top: 8px; font-size: 9.5px; font-weight: 400; letter-spacing: .4px; color: var(--ink-faint); }
+  .cl-cap .did svg { vertical-align: -1px; }
+
+  .cl-progress { position: absolute; left: 70px; right: 70px; height: 1px; background: rgba(255,255,255,.08); overflow: hidden; border-radius: 1px; }
+  .cl-progress i { position: absolute; inset: 0 auto 0 0; width: calc(var(--p, 0) * 100%); background: rgba(var(--cl),.8); box-shadow: 0 0 6px rgba(var(--cl),.8); }
+
+  .cl-steps { position: absolute; left: 30px; right: 30px; display: grid; gap: 7px; }
+  .cl-step {
+    display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--ink-dim);
+    opacity: 0; transform: translateY(6px); filter: blur(5px); transition: opacity .8s var(--lux), transform .9s var(--lux), filter .8s var(--lux), color .8s;
+  }
+  .cl-step.show { opacity: 1; transform: none; filter: none; }
+  .cl-step .ic {
+    flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    color: rgba(var(--cl),.95); border: 1px solid rgba(var(--cl),.3); background: rgba(var(--cl),.07);
+    transition: color .8s, border-color .8s, background .8s, box-shadow .8s;
+  }
+  .cl-step.active { color: var(--ink); }
+  .cl-step.active .ic { animation: stepGlow 1.9s ease-in-out infinite; }
+  .cl-step.done { color: var(--ink-faint); }
+  .cl-step.done .ic { color: #94D3AC; border-color: rgba(148,211,172,.35); background: rgba(148,211,172,.06); }
+  .cl-step span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cl-step em { font-style: normal; font-size: 9.5px; color: var(--ink-faint); direction: ltr; }
+  @keyframes stepGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(var(--cl),.18), 0 0 4px rgba(var(--cl),.1); } 50% { box-shadow: 0 0 0 1px rgba(var(--cl),.45), 0 0 16px rgba(var(--cl),.3); } }
+
+  .cl-hint { position: absolute; bottom: 30px; left: 30px; right: 30px; text-align: center; font-size: 10px; color: var(--ink-faint); letter-spacing: .3px; transition: opacity .6s var(--lux); }
+  .cl-hint.swap { opacity: 0; }
+  .cl-actions { position: absolute; bottom: 26px; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; transition: opacity .6s var(--lux), transform .8s var(--lux); }
+  .cl-actions.off { opacity: 0; pointer-events: none; transform: translateY(6px); }
+  .cl-actions button {
+    font: inherit; font-size: 10.5px; color: var(--ink-dim); height: 26px; padding: 0 12px; border-radius: 13px; cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  }
+
+  /* a question fills the screen */
+  .cl-q { position: absolute; inset: 0; padding: 82px 20px 0; display: grid; align-content: start; gap: 7px; z-index: 2; }
+  .cl-q .qh { text-align: center; font-size: 9.5px; letter-spacing: 2.4px; color: rgba(var(--cl),.9); }
+  .cl-q .qt { text-align: center; font-size: 14px; font-weight: 500; line-height: 1.35; margin: 0 0 5px; }
+  .cl-opt {
+    font: inherit; height: 38px; border-radius: 19px; display: flex; align-items: center; gap: 10px; padding: 0 12px; cursor: pointer; color: var(--ink);
+    background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.025)); border: 1px solid rgba(255,255,255,.1);
+    opacity: 0; transform: translateY(10px); filter: blur(4px);
+    transition: opacity .9s var(--lux), transform 1s var(--lux-spring), filter .9s var(--lux), background .6s, border-color .6s;
+    transition-delay: calc(.15s + var(--i) * .09s);
+  }
+  .cl-q.show .cl-opt { opacity: 1; transform: none; filter: none; }
+  .cl-opt .n { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: rgba(var(--cl),.95); border: 1px solid rgba(var(--cl),.35); }
+  .cl-opt b { font-size: 12.5px; font-weight: 500; }
+  .cl-opt.picked { background: rgba(var(--cl),.2); border-color: rgba(var(--cl),.6); transition-delay: 0s; }
+
+  /* an approval: the orb becomes a ring around one big button */
+  .cl-a { position: absolute; inset: 0; padding: 62px 22px 0; display: grid; align-content: start; justify-items: center; gap: 7px; z-index: 2; }
+  .cl-a .ah { font-size: 9.5px; letter-spacing: 2.4px; color: rgba(var(--cl),.92); display: flex; gap: 6px; align-items: center; }
+  .cl-a.danger .ah { color: #E48B82; }
+  .cl-a .ad { font-size: 13.5px; font-weight: 500; text-align: center; line-height: 1.35; }
+  .cl-cmd {
+    direction: ltr; font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10.5px; color: #ececf1; max-width: 226px;
+    padding: 6px 12px; border-radius: 12px; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cl-a.danger .cl-cmd { border-color: rgba(228,139,130,.4); }
+  .cl-arow { display: flex; gap: 16px; align-items: center; font-size: 10px; color: var(--ink-faint); }
+  .cl-arow button { font: inherit; font-size: 10.5px; color: var(--ink-dim); background: none; border: none; cursor: pointer; padding: 2px 4px; text-decoration: underline; text-decoration-color: rgba(255,255,255,.2); text-underline-offset: 3px; }
+  .cl-arow label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .cl-arow label i { width: 12px; height: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); display: grid; place-items: center; font-style: normal; font-size: 8px; }
+  .cl-arow label.on i { background: rgba(var(--cl),.5); border-color: rgba(var(--cl),.7); }
+  .cl-arow label.on i::after { content: '✓'; }
+  .cl-ringbtn {
+    position: absolute; left: 50%; top: 234px; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; z-index: 3;
+    display: grid; place-items: center; cursor: pointer; font-size: 9.5px; letter-spacing: 1.4px; color: rgba(255,255,255,.92);
+    background: radial-gradient(circle at 35% 30%, rgba(var(--cl),.26), rgba(var(--cl),.05)); border: 1px solid rgba(var(--cl),.3);
+    transition: transform 1s var(--lux-spring), background 1s var(--lux), border-color 1s var(--lux);
+  }
+  .cl-a.danger .cl-ringbtn { background: radial-gradient(circle at 35% 30%, rgba(228,139,130,.28), rgba(228,139,130,.05)); border-color: rgba(228,139,130,.4); }
+  .cl-ringbtn.holding { transform: scale(.93); }
+  .cl-ringbtn .cnt { position: absolute; inset: 0; display: grid; place-items: center; font-size: 22px; font-weight: 300; letter-spacing: 0; opacity: 0; transition: opacity .5s var(--lux); }
+  .cl-ringbtn.holding .cnt { opacity: 1; }
+  .cl-ringbtn.holding .lbl { opacity: 0; }
+  .cl-ringbtn .lbl { transition: opacity .5s var(--lux); }
+  .cl-a .under { position: absolute; top: 280px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--ink-faint); letter-spacing: .3px; }
+
+  /* switching project */
+  .cl-projects {
+    position: absolute; inset: 0; z-index: 4; padding: 66px 18px 0; display: grid; align-content: start; gap: 7px;
+    background: rgba(0,0,0,.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .cl-projects .ph { text-align: center; font-size: 9.5px; letter-spacing: 2.4px; color: var(--ink-faint); margin-bottom: 2px; }
+  .cl-prow {
+    height: 38px; border-radius: 19px; display: flex; align-items: center; gap: 9px; padding: 0 9px; cursor: pointer; font-size: 12px;
+    opacity: 0; transform: translateY(8px); transition: opacity .8s var(--lux), transform .9s var(--lux-spring); transition-delay: calc(.1s + var(--i) * .07s);
+  }
+  .cl-projects:not(.off) .cl-prow { opacity: 1; transform: none; }
+  .cl-mono {
+    flex: 0 0 auto; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center;
+    font-size: 8.5px; font-weight: 400; letter-spacing: .8px; direction: ltr; color: rgba(255,255,255,.92);
+    background: linear-gradient(150deg, rgba(var(--m, var(--cl)),.6), rgba(var(--m, var(--cl)),.1)); border: 1px solid rgba(255,255,255,.12);
+  }
+  .cl-prow b { flex: 1; font-weight: 500; direction: ltr; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cl-prow em { font-style: normal; font-size: 9.5px; color: var(--ink-faint); display: flex; align-items: center; gap: 5px; }
+  .cl-prow em i { width: 5px; height: 5px; border-radius: 50%; background: rgba(232,179,107,.95); box-shadow: 0 0 6px rgba(232,179,107,.6); animation: breathe 2.2s ease-in-out infinite; }
+  .cl-prow.cur { border-color: rgba(var(--cl),.4); }
+  .cl-prow.waiting { border-color: rgba(232,179,107,.45); }
+  .cl-prow .rtl { direction: rtl; text-align: right; }
+  .cl-prow.sess { height: 42px; }
+  .cl-prow.sess .txt { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .cl-prow.sess .txt b { font-size: 11.5px; }
+  .cl-prow.sess .txt small { font-size: 9.5px; color: var(--ink-faint); }
+  .cl-projects .ph.back { cursor: pointer; color: var(--ink-dim); letter-spacing: .6px; direction: ltr; }
+
+  /* someone is waiting for you in Claude: the status line and its page dot say so */
+  .link.wait { pointer-events: auto; cursor: pointer; color: rgba(232,179,107,.95); }
+  .link.wait .dot { background: #E8B36B; }
+  .link.wait .dot::after { border-color: #E8B36B; }
+  .dots i.wait { background: rgba(232,179,107,.95); box-shadow: 0 0 6px rgba(232,179,107,.7); animation: breathe 2.2s ease-in-out infinite; }
+  .bridge {
+    position: absolute; top: 250px; left: 50%; transform: translate(-50%, 8px); height: 28px; padding: 0 14px; border-radius: 14px;
+    font: inherit; font-size: 11px; font-weight: 500; color: var(--ink); cursor: pointer; white-space: nowrap; z-index: 2;
+    opacity: 0; pointer-events: none; transition: opacity .8s var(--lux), transform 1s var(--lux-spring);
+    border-color: rgba(226,150,120,.45);
+  }
+  .bridge.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+
   /* ------------------------------------------------------------ overlays */
   .dots { position: absolute; bottom: 14px; width: 100%; display: flex; justify-content: center; gap: 5px; z-index: 6; direction: rtl; }
   .dots i { width: 5px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.3); transition: width 1.2s var(--lux-spring), background .8s; }
@@ -337,7 +500,7 @@
   }
   .controls button:hover { background: rgba(255,255,255,.11); }
   .controls button:active { transform: scale(.98); }
-  .controls .seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .controls .seg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
   .controls .seg button { text-align: center; padding: 9px 2px; font-size: 12px; }
   .controls .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .controls .pair button { text-align: center; font-size: 13px; }
@@ -357,7 +520,7 @@
         <canvas id="field"></canvas>
 
         <div class="status">
-          <div class="link"><span class="dot"></span>מחובר</div>
+          <div class="link" id="link"><span class="dot"></span><span id="linkText">מחובר</span></div>
           <div class="clock" id="clock">00:00</div>
         </div>
 
@@ -367,12 +530,28 @@
             <div class="orb-hit" id="orbHit" title="הקש כדי לדבר"></div>
             <div class="hint" id="hint">הקש על ה‑Orb כדי לדבר</div>
             <div class="caption glass" id="caption"></div>
+            <button class="bridge glass" id="bridge">לשלוח ל‑Claude ›</button>
             <div class="vol glass sheen" id="vol">
               <div class="fill" id="volFill"></div>
               <svg class="ico lo" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/></svg>
               <div class="num"><span class="roll" id="volNum"></span></div>
               <svg class="ico hi" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
             </div>
+          </section>
+
+          <section class="page" id="pClaude">
+            <div class="cl-pill glass cl-fade" id="clPill"><i></i><b id="clProj">apple-watch-pc-controller</b><span class="chev">⌄</span></div>
+            <div class="cl-orbhit" id="clOrbHit"></div>
+            <div class="cl-coach" id="clCoach"></div>
+            <div class="cl-label cl-fade" id="clLabel">הקש ודבר</div>
+            <div class="cl-cap cl-fade" id="clCap"><div class="inner" id="clInner"></div></div>
+            <div class="cl-progress cl-fade off" id="clProgress"><i></i></div>
+            <div class="cl-steps cl-fade off" id="clSteps"></div>
+            <div class="cl-hint" id="clHint"></div>
+            <div class="cl-actions off" id="clActions"><button data-a="cancel">✕&nbsp; בטל</button><button data-a="again">↺&nbsp; שוב</button></div>
+            <div class="cl-q cl-fade off" id="clQ"></div>
+            <div class="cl-a cl-fade off" id="clA"></div>
+            <div class="cl-projects cl-fade off" id="clProjects"></div>
           </section>
 
           <section class="page" id="pPower">
@@ -403,7 +582,7 @@
         <div class="flash" id="flash"></div>
         <div class="dim" id="dim"></div>
         <div class="toast glass" id="toast"><span class="badge" id="toastBadge">✓</span><span id="toastText"></span></div>
-        <div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+        <div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
       </div>
     </div>
   </div>
@@ -413,16 +592,19 @@
     <h1>חלקיקים חיים</h1>
     <p>שדה חלקיקים אחד הוא החומר של כל הממשק, והוא נבנה מחדש בכל דף ומגיב לכל פעולה.</p>
     <div class="seg" id="seg">
-      <button data-go="0" class="on">קול</button><button data-go="1">חשמל</button><button data-go="2">מצב</button><button data-go="3">כפתורים</button><button data-go="4">משחקים</button>
+      <button data-go="0" class="on">קול</button><button data-go="1">Claude</button><button data-go="2">חשמל</button><button data-go="3">מצב</button><button data-go="4">כפתורים</button><button data-go="5">משחקים</button>
     </div>
     <button id="btnVoice">🎙&nbsp; פקודה קולית: "תנמיך ב‑30 אחוז"</button>
     <button id="btnFail">⚠️&nbsp; פקודה שלא הובנה</button>
     <div class="pair"><button id="gPrev">▲&nbsp; משחק קודם</button><button id="gNext">▼&nbsp; משחק הבא</button></div>
+    <div class="pair"><button id="clReset">↺&nbsp; הדגמת Claude מההתחלה</button><button id="clVoice">🔈&nbsp; הקראה</button></div>
+    <div class="sub" id="clNext"></div>
     <ul>
       <li><b>חשמל:</b> נעילה ושינה בלחיצה. הפעלה מחדש (2 שנ׳) וכיבוי (3 שנ׳) בהחזקה, ושחרור מוקדם מבטל</li>
       <li><b>כפתורים:</b> לחיצה פותחת. על אפליקציה פתוחה, מביאה אותה לחזית</li>
       <li><b>משחקים:</b> גלגלת או גרירה למעלה ולמטה מדפדפות. החזקה של 2 שניות על העטיפה פותחת, ולחיצה על משחק פתוח מביאה אותו לחזית</li>
-      <li>גלגלת העכבר על השעון = הכתר (ווליום)</li>
+      <li><b>Claude:</b> הכל מתחיל בנגיעה בכדור, והשעון אומר בכל רגע מה לעשות. נגיעה בשם הפרויקט למעלה פותחת פרויקטים ושיחות</li>
+      <li>גלגלת העכבר על השעון = הכתר (ווליום, או גלילת טקסט ב‑Claude)</li>
       <li>גרירה לצדדים על המסך = מעבר דף</li>
     </ul>
     <div class="sub">שום פעולה לא נשלחת למחשב.</div>
@@ -455,6 +637,11 @@
     dim: hex('#4a4f60'), dust: hex('#9aa3bd'),
   };
   const tint = (rgb, k) => mix(C.plat, rgb, k);
+  // Claude's presence: a warm terracotta, kept soft
+  const CLC = {
+    idle: hex('#E29678'), listen: hex('#F0B79C'), think: hex('#D98C8C'), work: hex('#E29678'),
+    speak: hex('#F3D2C1'), wait: hex('#E8B36B'), err: hex('#E48B82'),
+  };
 
   const ICONS = {
     'lock': '<path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="4.5" y="10" width="15" height="10.5" rx="3"/>',
@@ -677,14 +864,18 @@
   let gCount = 0;
   for (const p of P) { p.gedge = Math.random() < 0.42; if (p.gedge) p.gk = gCount++; }
   for (const p of P) if (p.gedge) p.gu = p.gk / gCount + rand(-0.001, 0.001);
+  // claude: during an approval the whole orb unwinds into a ring, each particle at its own angle
+  P.forEach((p, i) => { p.cang = (i / N) * TAU * 3 + rand(-0.01, 0.01); });
 
   const PAGES = [
     { id: 'pVoice', formation: 'orb' },
+    { id: 'pClaude', formation: 'claude' },
     { id: 'pPower', formation: 'power' },
     { id: 'pStats', formation: 'rings' },
     { id: 'pActions', formation: 'actions' },
     { id: 'pGames', formation: 'games' },
   ];
+  const PG = { voice: 0, claude: 1, power: 2, stats: 3, actions: 4, games: 5 };
   let formation = 'orb';
   let prevFormation = 'orb';
 
@@ -699,6 +890,7 @@
     if (f === 'orb') return (1 - p.sy) / 2;
     if (f === 'power') return p.edge ? (p.ptile + p.pu) / 4 : p.seed2;
     if (f === 'games') return p.gedge ? p.gu : p.seed2;
+    if (f === 'claude') return (1 - p.sy) / 2;
     return p.halo ? p.atile / ACTIONS.length + p.seed2 * 0.1 : p.seed2;
   }
   function setFormation(next, now) {
@@ -825,6 +1017,44 @@
     } else dustTarget(p, t);
   }
 
+  // ------------------------------------------------------------------ claude orb
+  const CL = {
+    state: 'idle',
+    x: W / 2, y: 128, r: 50, tx: W / 2, ty: 128, tr: 50,
+    level: 0, speak: 0, pulse: 0, spin: 0, color: CLC.idle.slice(),
+    ring: null, hold: { active: false, start: 0, dur: 2, progress: 0 },
+    glow: 0, glowVis: 0, gA: 0,
+  };
+  function claudeTarget(p, t) {
+    if (CL.ring) {
+      // three turns of a tight spiral read as one thick, living ring
+      const g = CL.ring, a = p.cang + t * 0.12;
+      const R = g.r + p.ro * 1.1 + Math.sin(t * 2 + p.seed) * 0.6;
+      out.x = g.x + Math.cos(a) * R;
+      out.y = g.y + Math.sin(a) * R;
+      // progress runs clockwise from twelve o'clock
+      out.angle = ((((a + Math.PI / 2) % TAU) + TAU) % TAU) / TAU;
+      out.layer = 'fx'; out.edge = true;
+      return;
+    }
+    out.edge = false;
+    const cy = Math.cos(CL.spin), sy = Math.sin(CL.spin);
+    const x = p.sx * cy - p.sz * sy;
+    let z = p.sx * sy + p.sz * cy;
+    const ct = Math.cos(0.42), st = Math.sin(0.42);
+    const y = p.sy * ct - z * st;
+    z = p.sy * st + z * ct;
+    let r = CL.r * (1 + Math.sin(t * 0.7) * 0.03);
+    if (CL.state === 'listening') r *= 1 + CL.level * 0.17 * Math.sin(p.sy * 9 + t * 5.5 + p.seed * 0.3);
+    if (CL.state === 'speaking') r *= 1 + CL.speak * 0.09 * Math.sin(p.sy * 6 + t * 7);
+    if (CL.state === 'waiting') r *= 0.96 + 0.04 * Math.sin(t * 2.2);
+    const persp = 1 + z * 0.14;
+    out.x = CL.x + x * r * persp;
+    out.y = CL.y + y * r * persp;
+    out.depth = (z + 1) / 2;
+    out.layer = 'fx';
+  }
+
   // A committed power action: everything is drawn slowly into the icon, holds
   // its breath, then a single thin ring of light widens and the particles
   // exhale back to where they belong.
@@ -871,6 +1101,7 @@
     for (const a of ACTIONS) a.focus = Math.max(0, a.focus - dt * 0.45);
     S.gLaunch = Math.max(0, S.gLaunch - dt * 0.5);
     S.gTint = mix(S.gTint || GAMES[0].tint, GAMES[S.game].tint, Math.min(1, dt * 1.3));
+    stepClaude(dt, t, now);
     if (S.orbState === 'listening') {
       const target = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.6) * Math.sin(t * 1.1 + 1));
       S.level = lerp(S.level, target, 0.08);
@@ -933,6 +1164,7 @@
       else if (f === 'rings') ringTarget(p, t);
       else if (f === 'power') powerTarget(p, t);
       else if (f === 'actions') actionsTarget(p, t);
+      else if (f === 'claude') claudeTarget(p, t);
       else gamesTarget(p, t);
 
       const tx = out.x, ty = out.y;
@@ -1002,6 +1234,19 @@
         } else {
           rgb = C.dust; size = 1; alpha = 0.06;
         }
+      } else if (f === 'claude') {
+        if (out.edge) {
+          const lit = CL.hold.active && out.angle < CL.hold.progress;
+          const acc = CL.ring.danger ? CLC.err : CLC.idle;
+          rgb = lit ? tint(acc, 0.85) : tint(acc, 0.5);
+          size = lit ? 1.05 : 0.72;
+          alpha = lit ? 0.95 : 0.34 + 0.06 * Math.sin(t * 1.3 + p.seed * 3);
+        } else {
+          const k = clamp(CL.r / 45, 0.4, 1.3);
+          rgb = mix(CL.color, WHITE, 0.12 + out.depth * 0.45);
+          size = (0.5 + out.depth * 1.0) * (0.72 + k * 0.28) + CL.level * 0.25;
+          alpha = 0.1 + out.depth * 0.72 + CL.speak * 0.15;
+        }
       } else {
         const g = GAMES[S.game];
         if (layer === 'fx') {
@@ -1034,6 +1279,12 @@
       const [x, y] = perim(cfg.rect, P_RADIUS, HOLD.progress);
       glow(ctxX, x, y, 2.2, tint(cfg.a, 0.6), 0.9);
     }
+    // the head of the progress around an approval being held
+    if (CL.hold.active && CL.ring && formation === 'claude') {
+      const g = CL.ring, a = CL.hold.progress * TAU - Math.PI / 2;
+      glow(ctxX, g.x + Math.cos(a) * g.r, g.y + Math.sin(a) * g.r, 2.4, tint(g.danger ? CLC.err : CLC.idle, 0.85), 0.95);
+    }
+    drawClaudeGlow(t, dt);
     // the head of the progress around a cover being confirmed
     if (GHOLD.active) {
       const pad = 4 - S.gLaunch * 3;
@@ -1050,7 +1301,7 @@
     }
 
     // the stream inside the volume slider
-    const voiceVis = S.page === 0 ? 1 : 0;
+    const voiceVis = S.page === PG.voice ? 1 : 0;
     S.streamVis = lerp(S.streamVis ?? 1, voiceVis, Math.min(1, dt * (voiceVis ? 3 : 12)));
     if (S.streamVis > 0.02) {
       const fillW = volRect.w * S.volume / 100;
@@ -1194,8 +1445,9 @@
   let crownY = 0;
   $('watch').addEventListener('wheel', (e) => {
     e.preventDefault();
-    if (S.page === 4) { gameWheel(e.deltaY); return; }
-    if (S.page !== 0) return;
+    if (S.page === PG.games) { gameWheel(e.deltaY); return; }
+    if (S.page === PG.claude) { claudeWheel(e.deltaY); return; }
+    if (S.page !== PG.voice) return;
     const step = e.deltaY > 0 ? -2 : 2;
     setVolume(S.volume + step, { direct: true });
     crownY += step;
@@ -1212,7 +1464,7 @@
   async function voiceDemo(fail) {
     if (running) return;
     running = true;
-    if (S.page !== 0) { goTo(0); await wait(1200); }
+    if (S.page !== PG.voice) { goTo(PG.voice); await wait(1200); }
     hint.style.opacity = 0;
     pulseScreen();
     S.orbState = 'listening';
@@ -1232,8 +1484,11 @@
       S.orbState = 'error';
       S.shake = 1;
       pulseScreen();
-      toast('err', 'לא הבנתי את הפקודה');
-      await wait(3200);
+      toast('err', 'זו לא פקודת ווליום');
+      bridgeText = 'תעשה לי קפה';
+      $('bridge').classList.add('show');
+      await wait(3600);
+      $('bridge').classList.remove('show');
     } else {
       S.orbState = 'success';
       S.bloom = 1;
@@ -1274,7 +1529,7 @@
   });
 
   function pressPower(i, e) {
-    if (S.burst || S.page !== 1 || now_() < S.formedAt - 0.4) return;
+    if (S.burst || S.page !== PG.power || now_() < S.formedAt - 0.4) return;
     const cfg = POWER[i];
     Object.assign(HOLD, { tile: i, start: nowS(), dur: cfg.hold, progress: 0, active: true });
     const el = powerEls[i];
@@ -1348,7 +1603,7 @@
 
   const launching = new Set();
   function launch(i, e) {
-    if (S.page !== 3 || launching.has(i) || nowS() < S.formedAt - 0.4) return;
+    if (S.page !== PG.actions || launching.has(i) || nowS() < S.formedAt - 0.4) return;
     const cfg = ACTIONS[i], el = actionEls[i];
     launching.add(i);
     rippleOn(el, e);
@@ -1372,6 +1627,702 @@
     }
     setTimeout(() => launching.delete(i), 1800);
   }
+
+  // ------------------------------------------------------------------ claude page
+  // Voice first: the orb is the button. The watch always says what to do next,
+  // in the word under the orb and the hint at the bottom; when your hand is
+  // needed, a slow pulse marks the spot.
+  const TOOL_ICONS = {
+    read: '<circle cx="12" cy="12" r="3"/><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5 16 16"/>',
+    edit: '<path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z"/>',
+    run: '<path d="M5 7l5 5-5 5"/><path d="M12 17h7"/>',
+    done: '<path d="M5 12.5 10 17.5 19 7"/>',
+    think: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>',
+    replay: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/>',
+    shield: '<path d="M12 3 4.5 6v5.5c0 4.5 3.2 8 7.5 9.5 4.3-1.5 7.5-5 7.5-9.5V6z"/>',
+  };
+  const ico = (k, size = 12) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TOOL_ICONS[k]}</svg>`;
+
+  const clLabel = $('clLabel'), clCap = $('clCap'), clInner = $('clInner'), clSteps = $('clSteps'), clHint = $('clHint');
+  const clProgress = $('clProgress'), clActions = $('clActions'), clQ = $('clQ'), clA = $('clA'), clCoach = $('clCoach');
+  const clProjects = $('clProjects'), clPill = $('clPill'), clOrbHit = $('clOrbHit');
+  let bridgeText = null;
+
+  // ---- where the orb sits in each state
+  const CL_LAYOUT = {
+    idle: { x: W / 2, y: 124, r: 50 },
+    listen: { x: W / 2, y: 120, r: 56 },
+    speak: { x: W / 2, y: 104, r: 40 },
+    work: { x: W / 2, y: 94, r: 34 },
+    question: { x: W / 2, y: 58, r: 14 },
+    tiny: { x: W / 2, y: 46, r: 9 },
+  };
+  function place(k) { const l = CL_LAYOUT[k]; CL.tx = l.x; CL.ty = l.y; CL.tr = l.r; }
+
+  function swapText(el, text) {
+    if (el.dataset.t === text) return;
+    el.dataset.t = text;
+    el.classList.add('swap');
+    setTimeout(() => { el.textContent = text; el.classList.remove('swap'); }, 280);
+  }
+  const setLabel = (t) => swapText(clLabel, t);
+  const setHint = (t) => swapText(clHint, t);
+  const show = (el, on) => el.classList.toggle('off', !on);
+
+  // ---- a slow pulse around whatever your hand should touch next
+  function coachAt(x, y, r) { Object.assign(clCoach.style, { left: x - r + 'px', top: y - r + 'px', width: r * 2 + 'px', height: r * 2 + 'px' }); clCoach.classList.add('on'); }
+  function coachOff() { clCoach.classList.remove('on'); }
+
+  // ---- per frame: follow the orb with the label, captions and tap target
+  function stepClaude(dt, t, now) {
+    CL.x = lerp(CL.x, CL.tx, Math.min(1, dt * 2.4));
+    CL.y = lerp(CL.y, CL.ty, Math.min(1, dt * 2.4));
+    CL.r = lerp(CL.r, CL.tr, Math.min(1, dt * 2.0));
+    const want = { idle: CLC.idle, listening: CLC.listen, sending: CLC.listen, thinking: CLC.think, working: CLC.work, speaking: CLC.speak, waiting: CLC.wait }[CL.state] || CLC.idle;
+    CL.color = mix(CL.color, want, Math.min(1, dt * 1.8));
+    CL.spin += dt * (0.2 + (CL.state === 'thinking' ? 1.2 : CL.state === 'working' ? 0.6 : 0) + (CL.state === 'listening' ? 0.3 : 0));
+    if (CL.state === 'listening') {
+      const target = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.6) * Math.sin(t * 1.1 + 1));
+      CL.level = lerp(CL.level, target, 0.08);
+    } else CL.level = lerp(CL.level, 0, 0.1);
+    CL.pulse = Math.max(0, CL.pulse - dt * 2.5);
+    const speakTarget = CL.state === 'speaking' ? (TTS.boundaries ? CL.pulse : 0.45 + 0.4 * Math.abs(Math.sin(t * 7.3) * Math.sin(t * 3.1))) : 0;
+    CL.speak = lerp(CL.speak, speakTarget, 0.18);
+
+    // the text block hangs just below the orb wherever the orb goes
+    const below = CL.y + CL.r * 1.12 + 10;
+    clLabel.style.top = below + 'px';
+    clCap.style.top = below + 18 + 'px';
+    clSteps.style.top = below + 20 + 'px';
+    clProgress.style.top = below + 18 + 90 + 'px';
+    Object.assign(clOrbHit.style, { left: CL.x - CL.r - 8 + 'px', top: CL.y - CL.r - 8 + 'px', width: (CL.r + 8) * 2 + 'px', height: (CL.r + 8) * 2 + 'px' });
+    if (clCoach.classList.contains('on') && coachFollowsOrb) coachAt(CL.x, CL.y, CL.r + 10);
+
+    // the edge light: faint at rest, brighter while you speak, a slow turn while thinking
+    const active = formation === 'claude' && S.page === PG.claude;
+    const g = {
+      idle: 0.16, listening: 0.5 + CL.level * 0.35, sending: 0.32, thinking: 0.34, working: 0.26,
+      speaking: 0.3 + CL.speak * 0.3, waiting: 0.42,
+    }[CL.state] ?? 0.16;
+    CL.glow = lerp(CL.glow, g, Math.min(1, dt * 2.5));
+    CL.glowVis = lerp(CL.glowVis, active && now > S.formedAt - 0.5 ? 1 : 0, Math.min(1, dt * 2));
+    CL.gA += dt * (0.22 + (CL.state === 'thinking' ? 0.85 : 0) + (CL.state === 'listening' ? 0.45 : 0) + (CL.state === 'working' ? 0.35 : 0));
+
+    // holds
+    const h = CL.hold;
+    if (h.active) {
+      h.progress = clamp((now - h.start) / h.dur, 0, 1);
+      const cnt = clA.querySelector('.cnt');
+      if (cnt) cnt.textContent = Math.max(1, Math.ceil(h.dur * (1 - h.progress)));
+      if (h.progress >= 1) { h.active = false; resolveApproval(true); }
+    }
+    if (stopHold.active) {
+      const p = clamp((now - stopHold.start) / 1, 0, 1);
+      if (p >= 1) { stopHold.active = false; interrupt(); }
+    }
+  }
+  let coachFollowsOrb = false;
+
+  function roundedPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function drawClaudeGlow(t, dt) {
+    const vis = CL.glowVis * CL.glow;
+    if (vis < 0.01 || !ctxX.createConicGradient) return;
+    const danger = CL.ring && CL.ring.danger;
+    const warm = CL.state === 'waiting';
+    const stops = danger
+      ? [[228, 139, 130], [200, 90, 90], [240, 170, 150], [228, 139, 130]]
+      : warm
+        ? [[232, 179, 107], [226, 150, 120], [243, 210, 170], [232, 179, 107]]
+        : [[226, 150, 120], [243, 210, 193], [217, 140, 150], [232, 179, 107], [226, 150, 120]];
+    const grad = ctxX.createConicGradient(CL.gA, (W / 2) * PR, (H / 2) * PR);
+    stops.forEach((c, i) => grad.addColorStop(i / (stops.length - 1), `rgba(${c.join(',')},1)`));
+    ctxX.save();
+    ctxX.globalCompositeOperation = 'lighter';
+    ctxX.strokeStyle = grad;
+    // a wide soft pass and a thin bright one, so the light has depth
+    for (const [lw, blur, a] of [[9, 26, 0.35], [2.2, 10, 0.9]]) {
+      ctxX.globalAlpha = vis * a;
+      ctxX.lineWidth = lw * PR;
+      ctxX.shadowColor = `rgba(${stops[1].join(',')},0.9)`;
+      ctxX.shadowBlur = blur * PR;
+      roundedPath(ctxX, 1.5 * PR, 1.5 * PR, (W - 3) * PR, (H - 3) * PR, 61 * PR);
+      ctxX.stroke();
+    }
+    ctxX.restore();
+  }
+
+  // ---- voice out: a real Hebrew voice when the browser has one
+  const TTS = { voice: null, on: false, boundaries: false };
+  function pickVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const he = speechSynthesis.getVoices().filter((v) => /^(he|iw)/i.test(v.lang));
+    TTS.voice = he.find((v) => /natural|online/i.test(v.name)) || he[0] || null;
+    if (TTS.voice && !TTS.touched) TTS.on = /natural|online/i.test(TTS.voice.name);
+    updateVoiceBtn();
+  }
+  function updateVoiceBtn() {
+    const b = $('clVoice');
+    if (!TTS.voice) { b.textContent = '🔇  אין קול עברי בדפדפן'; b.disabled = true; return; }
+    b.disabled = false;
+    b.textContent = TTS.on ? '🔈  הקראה פועלת' : '🔇  הקראה כבויה';
+  }
+  if ('speechSynthesis' in window) { speechSynthesis.onvoiceschanged = pickVoice; pickVoice(); }
+  $('clVoice').onclick = () => { TTS.touched = true; TTS.on = !TTS.on; updateVoiceBtn(); };
+
+  let speaking = null;
+  // speak `text`; onWord(i) fires as each word is spoken (from the voice when it
+  // reports word boundaries, otherwise paced by an estimate)
+  function speakText(text, onWord) {
+    return new Promise((resolve) => {
+      const words = text.split(' ');
+      const starts = []; let acc = 0;
+      for (const w of words) { starts.push(acc); acc += w.length + 1; }
+      let timer = null, pacer = null, settled = false;
+      const done = () => { if (settled) return; settled = true; clearTimeout(timer); clearInterval(pacer); speaking = null; resolve(); };
+      const pace = (ms) => { let i = 0; onWord && onWord(0); pacer = setInterval(() => { i++; if (i < words.length) onWord && onWord(i); else clearInterval(pacer); }, ms); };
+      if (TTS.on && TTS.voice) {
+        TTS.boundaries = false;
+        const u = new SpeechSynthesisUtterance(text);
+        u.voice = TTS.voice; u.lang = TTS.voice.lang; u.rate = 1.02;
+        u.onboundary = (e) => {
+          if (!TTS.boundaries) { TTS.boundaries = true; clearInterval(pacer); }
+          CL.pulse = 1;
+          let wi = 0; while (wi + 1 < starts.length && starts[wi + 1] <= e.charIndex) wi++;
+          onWord && onWord(wi);
+        };
+        u.onend = done; u.onerror = done;
+        speaking = { cancel: () => { try { speechSynthesis.cancel(); } catch (e) {} done(); } };
+        try { speechSynthesis.cancel(); } catch (e) {}
+        speechSynthesis.speak(u);
+        pace(330);
+        // browsers sometimes never report the end: never hang on it
+        timer = setTimeout(done, 2500 + text.length * 90);
+      } else {
+        TTS.boundaries = false;
+        pace(300);
+        timer = setTimeout(done, 600 + words.length * 300);
+        speaking = { cancel: done };
+      }
+    });
+  }
+  function stopSpeaking() { if (speaking) speaking.cancel(); }
+
+  // ---- a cancellable script
+  let run = { id: 0 };
+  class Interrupted extends Error {}
+  const step = (ms, token) => new Promise((res, rej) => setTimeout(() => (token.id === run.id ? res() : rej(new Interrupted())), ms));
+  const alive = (token) => { if (token.id !== run.id) throw new Interrupted(); };
+
+  // ---- captions: words arrive out of a blur; the word being spoken glows
+  function capWords(text, kind) {
+    clCap.className = 'cl-cap cl-fade ' + kind;
+    clInner.style.transform = 'none';
+    clInner.innerHTML = text.split(' ').map((w) => `<span class="w">${w}</span>`).join(' ');
+    return [...clInner.querySelectorAll('.w')];
+  }
+  function ghost(text) {
+    clCap.className = 'cl-cap cl-fade';
+    clInner.style.transform = 'none';
+    clInner.innerHTML = `<span class="ghost">${text}</span>`;
+  }
+  function keepInView(el) {
+    const box = clCap.clientHeight;
+    const y = el.offsetTop + el.offsetHeight;
+    const shift = Math.max(0, y - box + 14);
+    clInner.style.transform = `translateY(${-shift}px)`;
+  }
+  let capScroll = 0;
+  function claudeWheel(dy) {
+    const over = Math.max(0, clInner.scrollHeight - clCap.clientHeight);
+    capScroll = clamp(capScroll + dy * 0.4, 0, over);
+    clInner.style.transform = `translateY(${-capScroll}px)`;
+  }
+
+  // ---- work steps
+  function stepsReset() { clSteps.innerHTML = ''; }
+  async function stepDo(kind, text, ms, token, doneText) {
+    const prev = clSteps.querySelector('.cl-step.active');
+    if (prev) { prev.classList.remove('active'); prev.classList.add('done'); prev.querySelector('.ic').innerHTML = ico('done', 11); }
+    // at most three rows: the oldest folds away
+    const rows = clSteps.querySelectorAll('.cl-step');
+    if (rows.length >= 3) rows[0].remove();
+    const row = document.createElement('div');
+    row.className = 'cl-step active';
+    row.innerHTML = `<div class="ic">${ico(kind, 11)}</div><span>${text}</span><em></em>`;
+    clSteps.appendChild(row);
+    requestAnimationFrame(() => row.classList.add('show'));
+    const t0 = nowS();
+    await step(ms, token);
+    row.querySelector('em').textContent = (nowS() - t0).toFixed(1) + 's';
+    if (doneText) row.querySelector('span').textContent = doneText;
+    return row;
+  }
+  function stepsFinish() {
+    const a = clSteps.querySelector('.cl-step.active');
+    if (a) { a.classList.remove('active'); a.classList.add('done'); a.querySelector('.ic').innerHTML = ico('done', 11); }
+  }
+
+  // ---- states
+  function idle(hint) {
+    CL.state = 'idle';
+    place('idle');
+    show(clSteps, false); show(clCap, true); show(clLabel, true); show(clPill, true);
+    clActions.classList.add('off');
+    show(clProgress, false);
+    setLabel('הקש ודבר');
+    setHint(hint || '');
+    coachFollowsOrb = true;
+    coachAt(CL.x, CL.y, CL.r + 10);
+  }
+
+  // what you say, turn by turn: the demo cannot hear you, so it offers your line
+  const LINES = ['תוסיף לדף החשמל טיימר שינה שמכבה את המחשב', 'כן, תעלה את זה', 'תחזור על זה', 'תעבור לרובוקס', 'מה עשינו היום?'];
+  let turn = 0;
+  const nextLine = () => bridgeText || LINES[Math.min(turn, LINES.length - 1)];
+  function suggest() {
+    if (!CL.lastReply) { ghost(`נסה לומר: "${nextLine()}"`); setHint('בהדגמה, המשפט ייאמר בשבילך'); }
+    else setHint(`הקש ואמור: "${nextLine()}"`);
+  }
+
+  let pending = null;
+  async function listen() {
+    stopSpeaking();
+    run.id++;
+    const token = { id: run.id };
+    closePanels();
+    coachOff();
+    CL.state = 'listening';
+    place('listen');
+    show(clSteps, false); show(clCap, true);
+    setLabel('מקשיב · הקש לסיום');
+    setHint('');
+    const text = nextLine();
+    const words = capWords(text, 'you');
+    try {
+      await step(650, token);
+      for (const w of words) { w.classList.add('on'); keepInView(w); await step(260, token); }
+      await step(450, token);
+      // sending: a quiet line fills; cancel or say it again
+      CL.state = 'sending';
+      place('idle');
+      setLabel('שולח');
+      show(clProgress, true);
+      clActions.classList.remove('off');
+      pending = { token, text };
+      const t0 = nowS();
+      while (nowS() - t0 < 1.6) { alive(token); clProgress.style.setProperty('--p', ((nowS() - t0) / 1.6).toFixed(3)); await step(30, token); }
+      submit();
+    } catch (e) { if (!(e instanceof Interrupted)) throw e; }
+  }
+  function endSending() {
+    clActions.classList.add('off');
+    show(clProgress, false);
+    clProgress.style.setProperty('--p', 0);
+  }
+  function submit() {
+    if (!pending) return;
+    const text = pending.text;
+    pending = null;
+    endSending();
+    bridgeText = null;
+    turn = Math.min(turn + 1, LINES.length);
+    converse(text);
+  }
+  clActions.addEventListener('click', (e) => {
+    const a = e.target.closest('button')?.dataset.a;
+    if (!a) return;
+    run.id++; pending = null; endSending();
+    if (a === 'cancel') { CL.lastReply ? capWords(CL.lastReply, 'me').forEach((w) => w.classList.add('on')) : suggest(); idle(''); suggest(); }
+    if (a === 'again') listen();
+  });
+  clOrbHit.addEventListener('click', () => {
+    if (S.page !== PG.claude) return;
+    if (CL.state === 'idle' || CL.state === 'speaking') listen();
+    else if (CL.state === 'listening') { /* finishing early is the same as the pause at the end */ }
+  });
+
+  // ---- stop while working: hold the orb for a second, like Esc
+  const stopHold = { active: false, start: 0 };
+  clOrbHit.addEventListener('pointerdown', () => { if (CL.state === 'working' || CL.state === 'thinking') Object.assign(stopHold, { active: true, start: nowS() }); });
+  window.addEventListener('pointerup', () => { stopHold.active = false; });
+  async function interrupt() {
+    run.id++;
+    closePanels();
+    stepsFinish();
+    pulseScreen();
+    const token = { id: run.id };
+    try { await reply('עצרתי. מה לשנות?', token); } catch (e) { if (!(e instanceof Interrupted)) throw e; }
+  }
+
+  function closePanels() {
+    show(clQ, false); show(clA, false); show(clProjects, false);
+    if (CL.ring) { CL.ring = null; soften(1.6); }
+    CL.hold.active = false;
+  }
+
+  // ---- speaking a reply
+  async function reply(text, token, { did = null, local = false, label = null } = {}) {
+    CL.state = 'speaking';
+    place('speak');
+    show(clSteps, false); show(clCap, true); show(clLabel, true);
+    setLabel(label || (local ? 'חוזר · בלי לפנות ל‑Claude' : 'מדבר · הקש לקטיעה'));
+    setHint('');
+    coachOff();
+    const words = capWords(text, 'me');
+    words.forEach((w, i) => setTimeout(() => w.classList.add('on'), 40 * i));
+    let lastNow = null;
+    await speakText(text, (i) => {
+      if (token.id !== run.id) return;
+      if (lastNow) lastNow.classList.remove('now');
+      lastNow = words[i];
+      if (lastNow) { lastNow.classList.add('now', 'on'); keepInView(lastNow); }
+    });
+    alive(token);
+    if (lastNow) lastNow.classList.remove('now');
+    if (did) { const d = document.createElement('span'); d.className = 'did'; d.innerHTML = did; clInner.appendChild(d); keepInView(d); }
+    if (!local) CL.lastReply = text;
+    idle();
+    suggest();
+  }
+
+  // ---- questions fill the screen
+  function ask(q, token) {
+    return new Promise((resolve, reject) => {
+      CL.state = 'waiting';
+      place('question');
+      show(clCap, false); show(clSteps, false); show(clLabel, false); show(clPill, false);
+      coachOff();
+      clQ.innerHTML = `<div class="qh">${q.header} · CLAUDE שואל</div><div class="qt">${q.question}</div>` +
+        q.options.map((o, i) => `<button class="cl-opt" style="--i:${i}" data-i="${i}"><span class="n">${i + 1}</span><b>${o.label}</b></button>`).join('');
+      show(clQ, true);
+      requestAnimationFrame(() => clQ.classList.add('show'));
+      setHint('בחר, או אמור "הראשונה"');
+      speakText(`${q.question} ` + q.options.map((o, i) => ['אחת', 'שתיים', 'שלוש', 'ארבע'][i] + ': ' + o.label + '.').join(' '));
+      const watchdog = setInterval(() => { if (token.id !== run.id) { clearInterval(watchdog); reject(new Interrupted()); } }, 200);
+      clQ.onclick = (e) => {
+        const b = e.target.closest('.cl-opt');
+        if (!b) return;
+        clearInterval(watchdog);
+        stopSpeaking();
+        b.classList.add('picked');
+        pulseScreen();
+        setTimeout(() => { clQ.classList.remove('show'); show(clQ, false); show(clPill, true); setHint(''); resolve(q.options[+b.dataset.i].label); }, 750);
+      };
+    });
+  }
+
+  // ---- approvals: the orb unwinds into a ring around one big button
+  let approvalDone = null;
+  function approve(a, token) {
+    return new Promise((resolve, reject) => {
+      CL.state = 'waiting';
+      show(clCap, false); show(clSteps, false); show(clLabel, false); show(clPill, false);
+      coachFollowsOrb = false;
+      clA.classList.toggle('danger', !!a.danger);
+      clA.innerHTML =
+        `<div class="ah">${ico('shield', 11)}${a.danger ? 'פעולה הרסנית' : 'Claude מבקש אישור'} · <span style="direction:ltr">${curProject.name}</span></div>` +
+        `<div class="ad">${a.desc}</div><div class="cl-cmd">${a.cmd}</div>` +
+        `<div class="cl-arow"><button class="deny">דחה</button><label class="always"><i></i>תמיד בפרויקט הזה</label></div>` +
+        `<div class="cl-ringbtn"><span class="lbl">החזק</span><span class="cnt"></span></div>` +
+        `<div class="under">${a.danger ? 'החזק את העיגול 3 שניות' : 'החזק את העיגול 2 שניות'}</div>`;
+      show(clA, true);
+      CL.ring = { x: W / 2, y: 234, r: 44, danger: !!a.danger };
+      soften(1.4);
+      setHint('');
+      setTimeout(() => { if (CL.ring) coachAt(W / 2, 234, 34); }, 1200);
+      speakText(a.danger ? `זו פעולה הרסנית: ${a.desc}. החזק שלוש שניות כדי לאשר.` : `${a.desc}. החזק את העיגול כדי לאשר.`);
+      const btn = clA.querySelector('.cl-ringbtn');
+      const watchdog = setInterval(() => { if (token.id !== run.id) { clearInterval(watchdog); reject(new Interrupted()); } }, 200);
+      approvalDone = (ok) => {
+        clearInterval(watchdog);
+        approvalDone = null;
+        coachOff();
+        const always = clA.querySelector('.always')?.classList.contains('on');
+        setTimeout(() => { closePanels(); show(clPill, true); resolve({ ok, always }); }, ok ? 650 : 250);
+      };
+      btn.onpointerdown = (e) => {
+        btn.setPointerCapture(e.pointerId);
+        stopSpeaking();
+        coachOff();
+        btn.classList.add('holding');
+        Object.assign(CL.hold, { active: true, start: nowS(), dur: a.danger ? 3 : 2, progress: 0 });
+      };
+      btn.onpointerup = () => {
+        btn.classList.remove('holding');
+        if (CL.hold.active) { CL.hold.active = false; CL.hold.progress = 0; setTimeout(() => { if (CL.ring) coachAt(W / 2, 234, 34); }, 900); }
+      };
+      clA.onclick = (e) => {
+        if (e.target.closest('.deny')) { stopSpeaking(); approvalDone && approvalDone(false); }
+        const lab = e.target.closest('.always');
+        if (lab) lab.classList.toggle('on');
+      };
+    });
+  }
+  function resolveApproval(ok) {
+    pulseScreen();
+    const btn = clA.querySelector('.cl-ringbtn');
+    if (btn) btn.classList.remove('holding');
+    approvalDone && approvalDone(ok);
+  }
+
+  // ---- the conversation, as Claude would carry it
+  async function converse(text) {
+    run.id++;
+    const token = { id: run.id };
+    try {
+      if (/תחזור על זה/.test(text)) {             // handled on the watch, no call to Claude
+        await step(300, token);
+        await reply(CL.lastReply || 'עוד לא אמרתי כלום.', token, { local: true });
+        return;
+      }
+      CL.state = 'thinking';
+      place('work');
+      show(clCap, false);
+      stepsReset();
+      show(clSteps, true);
+      setLabel('חושב · החזק את הכדור לעצירה');
+      coachOff();
+      await stepDo('think', 'מבין מה ביקשת', 1300, token, 'הבין את הבקשה');
+
+      if (/טיימר/.test(text)) {
+        CL.state = 'working';
+        setLabel('עובד · החזק את הכדור לעצירה');
+        await stepDo('read', 'קורא את power_controller.py', 1400, token, 'קרא 2 קבצים');
+        await stepDo('search', 'מחפש איפה בנוי דף החשמל', 1300, token, 'מצא את דף החשמל');
+        stepsFinish();
+        const shape = await ask({
+          header: 'תצוגה', question: 'איך להציג את הטיימר בשעון?',
+          options: [{ label: 'טבעת שמתרוקנת' }, { label: 'ספירה לאחור' }, { label: 'שניהם' }],
+        }, token);
+        CL.state = 'working';
+        place('work');
+        show(clSteps, true); show(clLabel, true);
+        setLabel('עובד · החזק את הכדור לעצירה');
+        stepsReset();
+        await stepDo('edit', 'עורך את power_controller.py', 1500, token);
+        await stepDo('edit', 'עורך את watch-ui.js', 1500, token);
+        stepsFinish();
+        const tests = await approve({ desc: 'להריץ את הבדיקות של הפרויקט', cmd: 'py -m pytest tests/ -q' }, token);
+        CL.state = 'working';
+        place('work');
+        show(clSteps, true); show(clLabel, true);
+        let did = `${ico('edit', 10)} ערך 2 קבצים`;
+        if (tests.ok) {
+          await stepDo('run', 'מריץ את הבדיקות', 1900, token, '92 בדיקות עברו');
+          stepsFinish();
+          did += ` · ${ico('done', 10)} 92 בדיקות עברו`;
+          await step(700, token);
+        }
+        await reply(tests.ok
+          ? `הוספתי טיימר שינה לדף החשמל, עם ${shape}, וביטול בנגיעה. כל הבדיקות עוברות. להעלות את זה ל‑GitHub?`
+          : `הוספתי טיימר שינה לדף החשמל, עם ${shape}. לא הרצתי בדיקות, כמו שביקשת. להריץ אותן לפני שמעלים?`, token, { did });
+        return;
+      }
+
+      if (/תעלה/.test(text)) {
+        stepsFinish();
+        const push = await approve({ desc: 'להעלות את השינויים ל‑GitHub', cmd: 'git push star main', danger: true }, token);
+        CL.state = 'working';
+        place('work');
+        show(clSteps, true); show(clLabel, true);
+        if (push.ok) {
+          await stepDo('run', 'מעלה ל‑GitHub', 1500, token, 'הועלה ל‑GitHub');
+          stepsFinish();
+          await reply('הועלה. הגרסה החדשה נמצאת ב‑GitHub.', token, { did: `${ico('done', 10)} git push הצליח` });
+        } else {
+          await reply('בסדר, לא העליתי. השינויים שמורים אצלך במחשב.', token);
+        }
+        return;
+      }
+
+      if (/תעבור ל/.test(text)) {               // which folder did you mean? resolved on the PC, confirmed on the wrist
+        CL.state = 'thinking';
+        place('work');
+        show(clCap, false);
+        stepsReset();
+        show(clSteps, true);
+        setLabel('מחפש את הפרויקט');
+        await stepDo('search', 'מחפש פרויקט בשם "רובוקס"', 1100, token, 'נמצא: Robox');
+        stepsFinish();
+        const pr = projByName('Robox');
+        const yes = await ask({
+          header: 'מעבר פרויקט',
+          question: pr.pending ? 'Claude מחכה לך ב‑Robox לאישור. לעבור לשם?' : 'לעבור ל‑Robox?',
+          options: [{ label: 'כן, לעבור' }, { label: 'לא' }],
+        }, token);
+        if (yes.startsWith('כן')) { pr.pending ? goToPending(pr) : resumeSession(pr, pr.sessions[0]); }
+        else { idle(); suggest(); }
+        return;
+      }
+
+      if (/קפה/.test(text)) {
+        stepsFinish();
+        await reply('את זה אני עוד לא יודע לעשות. אבל אם תחבר מכונת קפה חכמה, אכתוב לה שליטה מהשעון.', token);
+        return;
+      }
+
+      await stepDo('read', 'עובר על השיחה של היום', 1200, token, 'עבר על השיחה');
+      stepsFinish();
+      await reply('היום הוספנו טיימר שינה לדף החשמל, הרצנו את הבדיקות והעלינו הכל ל‑GitHub.', token);
+    } catch (e) {
+      if (!(e instanceof Interrupted)) throw e;
+    }
+  }
+
+  // ---- projects and their conversations
+  const PROJECTS = [
+    { name: 'apple-watch-pc-controller', mono: 'PC', m: '226,150,120', note: 'לפני 4 דק׳', sessions: [
+      { title: 'עיצוב דף Claude לשעון', when: 'לפני 4 דק׳', last: 'הדף החדש מוכן, והבדיקות עוברות.' },
+      { title: 'דף משחקים עם עטיפות אמיתיות', when: 'אתמול', last: 'הוספתי החזקה של 2 שניות לפני שמשחק נפתח.' },
+      { title: 'התחברות Apple ID ב‑VM', when: 'לפני 5 ימים', last: 'ההתחברות עבדה אחרי שהתאמנו את ה‑ROM לכתובת הרשת.' },
+    ] },
+    { name: 'Robox', mono: 'RB', m: '100,170,230', note: 'עכשיו',
+      pending: { desc: 'להתקין את ספריית החיישנים', cmd: 'pip install pyserial', after: 'התקנתי את pyserial. ממשיך לחבר את חיישני המרחק, ואעדכן כשזה עובד.' },
+      sessions: [
+        { title: 'חיבור חיישני מרחק', when: 'עכשיו', last: 'אני צריך ספרייה כדי לדבר עם החיישנים.' },
+        { title: 'נסיעה בקו ישר', when: 'לפני שבוע', last: 'הרובוט נוסע ישר, עם סטייה של פחות משני סנטימטרים.' },
+      ] },
+    { name: 'Projector', mono: 'PJ', m: '190,160,110', note: 'אתמול', sessions: [
+      { title: 'מסך בית חדש', when: 'אתמול', last: 'העיצוב החדש של מסך הבית מוכן לבדיקה.' },
+    ] },
+    { name: 'AmbientHUD', mono: 'AH', m: '150,130,220', note: 'לפני שבוע', sessions: [
+      { title: 'תאורה לפי המוזיקה', when: 'לפני שבוע', last: 'הצבעים עוקבים עכשיו אחרי הבס.' },
+    ] },
+  ];
+  const projByName = (n) => PROJECTS.find((pr) => pr.name === n);
+  let curProject = PROJECTS[0];
+  function setProject(pr) { curProject = pr; $('clProj').textContent = pr.name; }
+
+  function renderProjects() {
+    clProjects.dataset.level = 'projects';
+    clProjects.innerHTML = '<div class="ph">פרויקטים</div>' + PROJECTS.map((pr, i) =>
+      `<div class="cl-prow glass${pr === curProject ? ' cur' : ''}${pr.pending ? ' waiting' : ''}" style="--i:${i};--m:${pr.m}" data-n="${pr.name}">` +
+      `<div class="cl-mono">${pr.mono}</div><b>${pr.name}</b><em>${pr.pending ? '<i></i>מחכה לך' : pr.note}</em></div>`).join('') +
+      `<div class="cl-prow glass" style="--i:${PROJECTS.length}" data-new="1"><div class="cl-mono">＋</div><b class="rtl">פרויקט חדש</b><em>אומרים שם</em></div>`;
+  }
+  function renderSessions(pr) {
+    clProjects.dataset.level = 'sessions';
+    clProjects.dataset.p = pr.name;
+    clProjects.innerHTML = `<div class="ph back" data-back="1">‹ ${pr.name}</div>` +
+      `<div class="cl-prow glass" style="--i:0" data-newsess="1"><div class="cl-mono">＋</div><b class="rtl">שיחה חדשה</b><em></em></div>` +
+      pr.sessions.map((se, i) =>
+        `<div class="cl-prow glass sess" style="--i:${i + 1};--m:${pr.m}" data-s="${i}"><div class="cl-mono">${pr.mono}</div>` +
+        `<div class="txt"><b class="rtl">${se.title}</b><small>${se.when}${i === 0 ? ' · האחרונה' : ''}</small></div></div>`).join('');
+    // let the rows arrive again
+    clProjects.classList.add('off');
+    requestAnimationFrame(() => requestAnimationFrame(() => show(clProjects, true)));
+  }
+  function openProjects() {
+    renderProjects();
+    show(clProjects, true);
+    coachOff();
+    place('tiny');
+    show(clCap, false); show(clLabel, false); setHint('');
+  }
+  clPill.addEventListener('click', openProjects);
+  clProjects.addEventListener('click', (e) => {
+    const row = e.target.closest('.cl-prow, .back');
+    if (!row) { show(clProjects, false); idle(); suggest(); return; }
+    if (row.dataset.back) { renderProjects(); return; }
+    if (row.dataset.new) { show(clProjects, false); idle(); suggest(); toast('ok', 'אומרים שם, ו‑Claude פותח תיקייה חדשה'); return; }
+    if (clProjects.dataset.level === 'projects') {
+      const pr = projByName(row.dataset.n);
+      if (pr.pending) { show(clProjects, false); goToPending(pr); return; }   // straight to what is waiting
+      renderSessions(pr);
+      return;
+    }
+    const pr = projByName(clProjects.dataset.p);
+    show(clProjects, false);
+    if (row.dataset.newsess) { newSession(pr); return; }
+    resumeSession(pr, pr.sessions[+row.dataset.s]);
+  });
+
+  // resuming an older conversation opens with a one-line reminder of where it stood
+  async function resumeSession(pr, se) {
+    run.id++;
+    const token = { id: run.id };
+    setProject(pr);
+    CL.lastReply = null;
+    pulseScreen();
+    try { await reply(`חזרנו לשיחה "${se.title}". ${se.last}`, token, { label: 'ממשיכים · הקש לקטיעה' }); }
+    catch (e) { if (!(e instanceof Interrupted)) throw e; }
+  }
+  function newSession(pr) {
+    run.id++;
+    setProject(pr);
+    CL.lastReply = null;
+    pulseScreen();
+    idle();
+    ghost(`שיחה חדשה ב‑${pr.name}. מה בונים?`);
+    setHint('הקש ודבר');
+  }
+  async function goToPending(pr) {
+    run.id++;
+    const token = { id: run.id };
+    setProject(pr);
+    try {
+      const res = await approve({ desc: pr.pending.desc, cmd: pr.pending.cmd }, token);
+      const after = res.ok ? pr.pending.after : 'בסדר, לא התקנתי. אחפש דרך בלי ספרייה חיצונית.';
+      pr.pending = null;
+      updatePendingUI();
+      CL.state = 'working';
+      place('work');
+      show(clSteps, true); show(clLabel, true);
+      stepsReset();
+      setLabel('עובד · החזק את הכדור לעצירה');
+      if (res.ok) { await stepDo('run', 'מתקין את pyserial', 1600, token, 'pyserial הותקן'); stepsFinish(); }
+      await reply(after, token);
+    } catch (e) { if (!(e instanceof Interrupted)) throw e; }
+  }
+
+  // someone waiting in Claude shows on every page, and one tap takes you to it
+  function updatePendingUI() {
+    const waiting = PROJECTS.find((pr) => pr.pending);
+    const elsewhere = !!waiting && S.page !== PG.claude;
+    $('dots').children[PG.claude].classList.toggle('wait', !!waiting);
+    $('link').classList.toggle('wait', elsewhere);
+    $('linkText').textContent = elsewhere ? `${waiting.name} · Claude מחכה` : 'מחובר';
+  }
+  $('link').addEventListener('click', () => {
+    const waiting = PROJECTS.find((pr) => pr.pending);
+    if (!waiting || S.page === PG.claude) return;
+    goTo(PG.claude);
+    setTimeout(() => goToPending(waiting), 1250);
+  });
+
+  function enterClaude() {
+    run.id++;
+    stopSpeaking();
+    closePanels();
+    idle();
+    suggest();
+  }
+  $('bridge').addEventListener('click', () => {
+    $('bridge').classList.remove('show');
+    const said = bridgeText;
+    goTo(PG.claude);
+    setTimeout(() => { capWords(said, 'you').forEach((w) => w.classList.add('on')); bridgeText = null; converse(said); }, 1300);
+  });
+  $('clReset').onclick = () => {
+    turn = 0; bridgeText = null; CL.lastReply = null;
+    setProject(PROJECTS[0]);
+    projByName('Robox').pending = projByName('Robox').pending || { desc: 'להתקין את ספריית החיישנים', cmd: 'pip install pyserial', after: 'התקנתי את pyserial. ממשיך לחבר את חיישני המרחק, ואעדכן כשזה עובד.' };
+    updatePendingUI();
+    if (S.page !== PG.claude) goTo(PG.claude);
+    enterClaude();
+  };
+  $('clNext').textContent = '';
+  enterClaude();
+  setTimeout(updatePendingUI, 0);
 
   // ------------------------------------------------------------------ games page
   const deck = document.createElement('div');
@@ -1408,7 +2359,8 @@
       el.style.opacity = op;
       el.style.filter = `blur(${blur}px) brightness(${br})`;
       el.style.zIndex = z;
-      el.style.pointerEvents = d === 0 ? 'auto' : 'none';
+      // the front card inherits from its page, so a hidden page never catches taps
+      el.style.pointerEvents = d === 0 ? '' : 'none';
     });
   }
   function gameMeta(g) { return g.running ? `${g.store} · פתוח עכשיו` : g.last ? `${g.store} · שיחקת ${g.last}` : g.store; }
@@ -1440,7 +2392,7 @@
     cardPressed = true;
     justStarted = false;
     const g = GAMES[S.game];
-    if (!g.running && S.page === 4 && nowS() >= S.formedAt - 0.4) {
+    if (!g.running && S.page === PG.games && nowS() >= S.formedAt - 0.4) {
       Object.assign(GHOLD, { active: true, start: nowS(), progress: 0 });
       g.el.classList.remove('asking');
       g.el.classList.add('holding');
@@ -1495,7 +2447,7 @@
     setTimeout(() => toast('ok', `${g.name} הובא לחזית`), 600);
   }
   function launchGame() {
-    if (S.page !== 4) return;
+    if (S.page !== PG.games) return;
     const g = GAMES[S.game];
     sweep(g.el, true);
     pulseScreen();
@@ -1517,8 +2469,8 @@
   }, 1000);
   layoutDeck();
   setGameText(true);
-  $('gPrev').onclick = () => { if (S.page !== 4) goTo(4); else stepGame(-1); };
-  $('gNext').onclick = () => { if (S.page !== 4) goTo(4); else stepGame(1); };
+  $('gPrev').onclick = () => { if (S.page !== PG.games) goTo(PG.games); else stepGame(-1); };
+  $('gNext').onclick = () => { if (S.page !== PG.games) goTo(PG.games); else stepGame(1); };
 
   // ------------------------------------------------------------------ stats page
   const cpu = Roller($('cpuNum')), mem = Roller($('memNum')), disk = Roller($('diskNum'));
@@ -1565,6 +2517,8 @@
     const t = nowS();
     setFormation(PAGES[i].formation, t);
     S.formedAt = t + 1.1;
+    if (i === PG.claude && !pending && CL.state === 'idle') enterClaude();
+    updatePendingUI();
     pulseScreen();
     setTimeout(pulseScreen, 1000);   // a second tap as the shape clicks into place
   }
@@ -1574,7 +2528,7 @@
   let dragX = null, dragged = false;
   screen.addEventListener('pointerdown', (e) => {
     dragged = false;
-    if (!e.target.closest('.vol, .ptile, .atile, .deck')) dragX = e.clientX;
+    if (!e.target.closest('.vol, .ptile, .atile, .deck, .cl-sheet, .cl-mic, .cl-stop, .cl-prev, .cl-hero, .cl-row, .cl-new, .bridge')) dragX = e.clientX;
   });
   window.addEventListener('pointermove', (e) => { if (dragX !== null && Math.abs(e.clientX - dragX) > 10) dragged = true; });
   window.addEventListener('pointerup', (e) => {
@@ -1589,6 +2543,8 @@
     S, HOLD, goTo, voiceDemo, setVolume, launch, POWER, ACTIONS,
     press: (i) => pressPower(i), release: () => releasePower(),
     GAMES, GHOLD, stepGame: (d) => stepGame(d), launchGame: () => launchGame(),
+    PG, CL, listen: () => listen(), submit: () => submit(), enterClaude: () => enterClaude(), PROJECTS,
+    say: (t) => { bridgeText = t; listen(); },
   };
 })();
 </script>
