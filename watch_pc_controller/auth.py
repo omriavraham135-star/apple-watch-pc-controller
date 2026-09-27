@@ -1,7 +1,10 @@
 """Who may call the API.
 
 Requests from this PC itself are trusted: anything already running here can
-do whatever the API does. Every other request must carry a token from
+do whatever the API does. A web page open in a browser here also connects
+from 127.0.0.1, though, and it is not "the PC itself" — so a local request is
+trusted only when its Host, Origin and Sec-Fetch-Site headers say it came
+from this server's own pages. Every other request must carry a token from
 pairing. A handful of paths stay open, because a device needs them to pair.
 """
 
@@ -9,6 +12,7 @@ import ipaddress
 import time
 from collections import defaultdict, deque
 from typing import Callable, Mapping, Optional
+from urllib.parse import urlsplit
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -29,6 +33,38 @@ def client_is_local(host: Optional[str]) -> bool:
         return False
     mapped = getattr(address, "ipv4_mapped", None)
     return address.is_loopback or bool(mapped and mapped.is_loopback)
+
+
+_LOCAL_NAMES = {"localhost", "127.0.0.1", "::1"}
+_OWN_PAGE_SITES = {"same-origin", "none"}      # none = typed into the address bar
+
+
+def _host_name(netloc: str) -> str:
+    """'127.0.0.1:8000' → '127.0.0.1', '[::1]:8000' → '::1'."""
+    try:
+        return (urlsplit("//" + netloc).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def request_is_local(request) -> bool:
+    """Sent from this PC by this server's own pages, not by some web page."""
+    if not client_is_local(request.client.host if request.client else None):
+        return False
+    headers = request.headers
+    host = headers.get("host", "")
+    if _host_name(host) not in _LOCAL_NAMES:          # DNS rebinding arrives with a foreign Host
+        return False
+    origin = headers.get("origin")
+    if origin is not None:
+        try:
+            netloc = urlsplit(origin).netloc.lower()
+        except ValueError:
+            return False
+        if netloc != host.lower():                    # another site, another local port, or "null"
+            return False
+    site = headers.get("sec-fetch-site")
+    return site is None or site in _OWN_PAGE_SITES
 
 
 def bearer_token(headers: Mapping[str, str]) -> Optional[str]:
@@ -76,7 +112,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return JSONResponse({"detail": "יותר מדי ניסיונות. נסה שוב בעוד דקה."}, status_code=429)
             return await call_next(request)
 
-        if client_is_local(host) or path in OPEN_PATHS:
+        if path in OPEN_PATHS or request_is_local(request):
             return await call_next(request)
 
         if self._get_store().verify(bearer_token(request.headers)) is None:

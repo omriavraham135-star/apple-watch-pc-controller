@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from watch_pc_controller.auth import client_is_local
+from watch_pc_controller.auth import request_is_local
 from watch_pc_controller.claude_bridge import AuditLog
 from watch_pc_controller.claude_projects import (
     BadProjectName,
@@ -179,6 +179,6 @@ async def events(cid: str, after: int = 0):
 
 @router.get("/audit")
 def audit(request: Request):
-    if not client_is_local(request.client.host if request.client else None):
+    if not request_is_local(request):
         raise HTTPException(status_code=403, detail="אפשר לראות את היומן רק מהמחשב")
     return {"entries": _audit.recent(100)}

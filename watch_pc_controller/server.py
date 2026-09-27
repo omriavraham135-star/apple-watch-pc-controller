@@ -2,12 +2,11 @@ import os
 import socket
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
 from watch_pc_controller.actions import ActionRegistry, UnknownActionError
-from watch_pc_controller.auth import PAIR_ATTEMPTS_PER_MINUTE, AuthMiddleware, RateLimiter, client_is_local
+from watch_pc_controller.auth import PAIR_ATTEMPTS_PER_MINUTE, AuthMiddleware, RateLimiter, request_is_local
 from watch_pc_controller.claude_api import router as claude_router
 from watch_pc_controller.pairing import CODE_TTL_SECONDS, PairingError, PairingStore
 from watch_pc_controller.nlp_parser import parse_voice_command
@@ -17,13 +16,9 @@ from watch_pc_controller.volume_controller import VolumeController
 
 app = FastAPI(title="Apple Watch PC Controller API", version="2.0.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# No CORS: the dashboard is served from this server and the watch app is not a
+# browser, so nothing legitimate is cross-origin. Allowing it would let any web
+# page read and drive the API from a browser on this PC.
 
 # Paired devices only. The store and limiter are looked up per request, so
 # tests can swap them without rebuilding the app.
@@ -67,7 +62,7 @@ class PairRequest(BaseModel):
 
 def _require_local(request: Request) -> None:
     """Some actions belong to whoever is sitting at the PC."""
-    if not client_is_local(request.client.host if request.client else None):
+    if not request_is_local(request):
         raise HTTPException(status_code=403, detail="אפשר לעשות את זה רק מהמחשב עצמו")
 
 

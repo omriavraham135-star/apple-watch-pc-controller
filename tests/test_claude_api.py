@@ -35,7 +35,7 @@ def with_client(scenario):
     """Run a scenario against the app on one event loop, like the real server."""
     async def go():
         transport = httpx.ASGITransport(app=server.app, client=(LOCAL, 50000))
-        async with httpx.AsyncClient(transport=transport, base_url="http://pc") as client:
+        async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
             return await scenario(client)
     return asyncio.run(go())
 

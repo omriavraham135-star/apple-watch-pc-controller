@@ -20,12 +20,14 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(server, "pair_limiter", RateLimiter(PAIR_ATTEMPTS_PER_MINUTE))
 
 
-def call(method, path, host=REMOTE, token=None, json=None):
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+def call(method, path, host=REMOTE, token=None, json=None, headers=None):
+    headers = dict(headers or {})
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     async def go():
         transport = httpx.ASGITransport(app=server.app, client=(host, 50000))
-        async with httpx.AsyncClient(transport=transport, base_url="http://pc") as client:
+        async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
             return await client.request(method, path, headers=headers, json=json)
 
     return asyncio.run(go())
@@ -95,3 +97,55 @@ def test_pages_a_device_needs_to_pair_stay_open(path):
 def test_preflight_is_not_blocked():
     res = call("OPTIONS", "/api/actions")
     assert res.status_code != 401
+
+
+# A web page open in a browser on the PC also connects from 127.0.0.1. It must
+# not count as "the PC itself", or any site could drive the API.
+
+EVIL = "https://evil.example"
+
+
+def test_the_dashboard_itself_is_trusted():
+    headers = {"Origin": "http://127.0.0.1:8000", "Sec-Fetch-Site": "same-origin"}
+    assert call("GET", "/api/actions", host=LOCAL, headers=headers).status_code == 200
+
+
+@pytest.mark.parametrize("headers", [
+    {"Origin": EVIL},
+    {"Origin": "null"},
+    {"Origin": "http://localhost:3000"},          # another server on this PC
+    {"Host": "rebind.evil.example"},              # DNS rebinding
+    {"Host": "rebind.evil.example:8000"},
+    {"Sec-Fetch-Site": "cross-site"},
+    {"Sec-Fetch-Site": "same-site"},
+])
+def test_a_web_page_on_the_pc_is_not_trusted(headers):
+    assert call("GET", "/api/actions", host=LOCAL, headers=headers).status_code == 401
+
+
+def test_a_web_page_cannot_mint_a_pairing_code():
+    assert call("POST", "/api/pair/code", host=LOCAL, headers={"Origin": EVIL}).status_code in (401, 403)
+
+
+def test_no_cors_grant_for_a_foreign_page():
+    headers = {"Origin": EVIL, "Access-Control-Request-Method": "POST"}
+    res = call("OPTIONS", "/api/claude/conversations", host=LOCAL, headers=headers)
+    assert "access-control-allow-origin" not in res.headers
+    res = call("GET", "/api/actions", host=LOCAL, headers={"Origin": EVIL})
+    assert "access-control-allow-origin" not in res.headers
+
+
+def _every_route():
+    for route in server.app.routes:
+        for method in sorted(getattr(route, "methods", None) or []):
+            if method in ("HEAD", "OPTIONS"):
+                continue
+            yield method, route.path.replace("{", "").replace("}", "")
+
+
+@pytest.mark.parametrize("method,path", list(_every_route()))
+def test_every_route_but_the_open_ones_needs_a_token_from_the_network(method, path):
+    from watch_pc_controller.auth import OPEN_PATHS
+    if path in OPEN_PATHS:
+        pytest.skip("open on purpose")
+    assert call(method, path).status_code == 401
