@@ -14,3 +14,4 @@ output/
 .superpowers/
 watch_pc_controller/devices.json
 watch_pc_controller/devices.json.tmp
+watch_pc_controller/claude_audit.jsonl
