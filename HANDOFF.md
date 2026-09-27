@@ -22,9 +22,9 @@ Local: `D:\project\apple-watch-pc-controller`, branch `main`, remote name `star`
 
 | Part | State |
 |---|---|
-| Python server | Done. 263 tests pass. Runs from the project's `.venv` (the Agent SDK needs a newer Starlette than the global Python has). |
+| Python server | Done. 333 tests pass. Runs from the project's `.venv` (the Agent SDK needs a newer Starlette than the global Python has). |
 | Browser dashboard | Done. 53 browser tests pass. |
-| Pairing | Done (plan 1). Network devices need a token from `/pair`; loopback is exempt. |
+| Pairing | Done (plan 1). Network devices need a token from `/pair`. Loopback is exempt only for this server's own pages (Host/Origin/Sec-Fetch-Site checked, no CORS), so a web page in a browser on the PC is not trusted. |
 | Claude engine | Done (plan 2), no watch page yet. `/api/claude/*`: projects, conversations, SSE events, approvals, questions, audit. Verified end to end on 2026-09-27 with `scripts/claude_e2e.py` against the real server: all eight checks OK. |
 | watchOS app | **Compiles and runs.** Verified by screenshots from a simulator in CI. |
 | CI | Green. Builds on macos-15, then boots a watch simulator and captures all four pages. |
